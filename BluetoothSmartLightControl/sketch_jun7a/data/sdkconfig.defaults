@@ -1,0 +1,12 @@
+# Enable Bluetooth overall
+CONFIG_BT_ENABLED=y
+
+# Enable Bluetooth Classic (BR/EDR)
+CONFIG_BT_CLASSIC_ENABLED=y
+
+# Enable Serial Port Profile (SPP)
+CONFIG_BT_SPP_ENABLED=y
+
+# Ensure BLE is also enabled if your application uses it, otherwise you can remove this.
+# Often, dual mode (Classic + BLE) is common.
+CONFIG_BT_BLE_ENABLED=y
