@@ -143,8 +143,16 @@ void loop() {
         decreaseBrightness();
     }
 
-    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH && lastLightPressTime>millis()-debounceDelay) {
-        toggleLight();
+    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == LOW && lastLightPressTime == 0) {
+        lastLightPressTime = millis();
+        Serial.print("Light toggle pressed on " + lastLightPressTime);
+    }
+    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH) {
+        Serial.print("Light toggle released on " + millis());
+        if (lastLightPressTime > millis() - debounceDelay) {
+            toggleLight();
+        }
+        lastLightPressTime = 0;
     }
 
     if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
