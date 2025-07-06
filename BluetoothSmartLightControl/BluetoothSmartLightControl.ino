@@ -12,11 +12,17 @@ const int LIGHT_TOGGLE_BTN_PIN = 23; // Light ON/OFF (simulates knob push)
 const int FAN_SPEED_UP_BTN_PIN = 18;   // Fan Speed Up
 const int FAN_SPEED_DOWN_BTN_PIN = 19; // Fan Speed Down
 
+const int LIGHT_BRIGHTNESS_STEP = 25;
 // --- State Variables ---
 int currentBrightness = 0; // 0-255 (for actual PWM light control)
 bool lightOn = false;      // True if light is active
 
+int lastLightPressTime = 0; 
+bool fanSpeedUpPressed = false;
+bool fanSpeedDownPressed = false;
+
 int currentFanSpeed = 0; // 0=Off, 1=Low, 2=Medium, 3=High
+int currentLightWarmness = 0; // 0x00 - 0xFA
 
 // --- Bluetooth Classic Setup ---
 BluetoothSerial SerialBT;
@@ -59,13 +65,13 @@ void toggleLight() {
 }
 
 void increaseBrightness() {
-    if (!lightOn) toggleLight(); // Turn on light if it's off
-    setLightBrightness(currentBrightness + 25); // Increase by a step
+    if (!lightOn) return; // if light is off, ignore
+    setLightBrightness(currentBrightness + LIGHT_BRIGHTNESS_STEP); // Increase by a step
 }
 
 void decreaseBrightness() {
-    setLightBrightness(currentBrightness - 25); // Decrease by a step
-    if (currentBrightness == 0) toggleLight(); // If brightness hits 0, turn off
+    if (!lightOn) return; // if light is off, ignore
+    setLightBrightness(currentBrightness - LIGHT_BRIGHTNESS_STEP); // Decrease by a step
 }
 
 // --- Fan Control Functions ---
@@ -136,14 +142,25 @@ void loop() {
     if (isButtonPressed(LIGHT_DOWN_BTN_PIN, 1)) {
         decreaseBrightness();
     }
-    if (isButtonPressed(LIGHT_TOGGLE_BTN_PIN, 2)) {
+
+    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH && lastLightPressTime>millis()-debounceDelay) {
         toggleLight();
     }
-    if (isButtonPressed(FAN_SPEED_UP_BTN_PIN, 3)) {
+
+    if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
+        fanSpeedUpPressed = true;
         increaseFanSpeed();
     }
-    if (isButtonPressed(FAN_SPEED_DOWN_BTN_PIN, 4)) {
+    if (digitalRead(FAN_SPEED_UP_BTN_PIN) == HIGH && fanSpeedUpPressed) {
+        fanSpeedUpPressed = false;
+    }
+    
+    if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == LOW && !fanSpeedDownPressed) {
+        fanSpeedDownPressed = true;
         decreaseFanSpeed();
+    }
+    if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == HIGH && fanSpeedDownPressed) {
+        fanSpeedDownPressed = false;
     }
 
     // --- Bluetooth Classic Communication ---
