@@ -12,23 +12,43 @@ const int LIGHT_TOGGLE_BTN_PIN = 23; // Light ON/OFF (simulates knob push)
 const int FAN_SPEED_UP_BTN_PIN = 18;   // Fan Speed Up
 const int FAN_SPEED_DOWN_BTN_PIN = 19; // Fan Speed Down
 
-const int LIGHT_BRIGHTNESS_STEP = 25;
+const int LIGHT_BRIGHTNESS_STEP = 15;
+
+const int MAIN_LIGHT = 0;
+const int RGB_RING = 1;
+
 // --- State Variables ---
 int currentBrightness = 0; // 0-255 (for actual PWM light control)
-bool lightOn = false;      // True if light is active
 
-int lastLightPressTime = 0; 
 bool fanSpeedUpPressed = false;
 bool fanSpeedDownPressed = false;
 
+int mode = MAIN_LIGHT;
 int currentFanSpeed = 0; // 0=Off, 1=Low, 2=Medium, 3=High
 int currentLightWarmness = 0; // 0x00 - 0xFA
+int lightWarmnessStep = 10;
+
+int hue = 0, ringR = 255, ringG = 0, ringB = 0;
+
+// --- main light toggle button variables ---
+bool lightOn = false;      // True if light is active
+unsigned long lastLightPressTime = 0; 
+unsigned long lastDebounceTime = 0;
+unsigned long lastLongPressActionTime = 0;
+int lightToggleButtonState;
+int lastLightToggleButtonState = HIGH;
+bool isLongPress = false;
+int clickCount = 0;
 
 // --- Bluetooth Classic Setup ---
 BluetoothSerial SerialBT;
 
 // --- Debounce Variables for Buttons ---
 const long debounceDelay = 50; // ms
+const long longPressDelay = 750; // ms
+const long doubleClickDelay = 500; // ms
+const unsigned long longPressActionInterval = 50; // Call action every 50ms
+
 unsigned long lastButtonPressTime[5]; // Array to store last press time for each button
 
 // Function to handle button presses more generically
@@ -44,8 +64,12 @@ bool isButtonPressed(int pin, int buttonIndex) {
 // --- Light Control Functions ---
 void setLightBrightness(int brightness) {
     currentBrightness = constrain(brightness, 0, 255); // Ensure within range
-    Serial.print("Light Brightness: ");
-    Serial.println(currentBrightness);
+    if (mode == MAIN_LIGHT){
+        Serial.print("Light Brightness: ");
+        Serial.println(currentBrightness);
+    } else {
+        recomputeRGB();
+    }
     // In a real scenario, you'd send this PWM value to a MOSFET/LED driver.
     // For this prototype, the brightness change is internal logic and reported via serial/BT.
 }
@@ -54,13 +78,67 @@ void toggleLight() {
     lightOn = !lightOn;
     if (lightOn) {
         Serial.println("Light ON");
-        if (currentBrightness == 0) { // If turning on from 0 brightness, set a default
-            currentBrightness = 100;
-        }
-        setLightBrightness(currentBrightness);
     } else {
         Serial.println("Light OFF");
-        setLightBrightness(0); // Effectively turn off light logic
+    }
+}
+
+void rotateHue() {
+    hue = (++hue) % 100;
+    recomputeRGB();
+}
+
+void recomputeRGB() {
+    hslToRgb((float)(hue / 100.0), 1.0, (float)(currentBrightness/255.0), &ringR, &ringG, &ringB);
+    Serial.printf("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)\n", ringR, ringG, ringB, hue, currentBrightness);
+}
+
+void hslToRgb(float h, float s, float l, int* r, int* g, int* b) {
+    Serial.printf("hsltorgb: h: %f, s: %f, l: %f \n", h, s, l);
+    if (s == 0.0) {
+        *r = (int)l; // achromatic
+        *g = (int)l; // achromatic
+        *b = (int)l; // achromatic
+    } else {
+        float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+        float p = 2.0 * l - q;
+        *r = (int)round(255 * hueToRgb(p, q, h + 1/3));
+        *g = (int)round(255 * hueToRgb(p, q, h));
+        *b = (int)round(255 * hueToRgb(p, q, h - 1/3));
+    }
+}
+
+float hueToRgb(float p, float q, float t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1/6) return p + (q - p) * 6 * t;
+  if (t < 1/2) return q;
+  if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+}
+
+void changeWarmness() {
+    if (!lightOn) return;
+    currentLightWarmness += lightWarmnessStep;
+    if (currentLightWarmness >= 0xFA) {
+        currentLightWarmness = 0xFA;
+        lightWarmnessStep = -lightWarmnessStep;
+    } else if (currentLightWarmness <= 0) {
+        currentLightWarmness = 0x00;
+        lightWarmnessStep = -lightWarmnessStep;
+    }
+
+    Serial.print("warmness: ");
+    Serial.println(currentLightWarmness);
+}
+
+void switchMode() {
+    if (mode == MAIN_LIGHT) {
+        mode = RGB_RING;
+        Serial.println("switched to RGB Ring");
+    } else {
+        mode = MAIN_LIGHT;
+        Serial.println("switched to Main Light");
     }
 }
 
@@ -143,17 +221,109 @@ void loop() {
         decreaseBrightness();
     }
 
-    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == LOW && lastLightPressTime == 0) {
-        lastLightPressTime = millis();
-        Serial.print("Light toggle pressed on " + lastLightPressTime);
+    int reading = digitalRead(LIGHT_TOGGLE_BTN_PIN);
+
+    // If the switch changed, due to noise or pressing, reset the debounce timer
+    if (reading != lastLightToggleButtonState) {
+        lastDebounceTime = millis();
     }
-    if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH) {
-        Serial.print("Light toggle released on " + millis());
-        if (lastLightPressTime > millis() - debounceDelay) {
-            toggleLight();
+
+    // After the debounce delay, if the state is stable, process it
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        // If the button state has changed
+        if (reading != lightToggleButtonState) {
+            lightToggleButtonState = reading;
+
+            // --- Step 2: Handle Press and Release Events ---
+            if (lightToggleButtonState == LOW) { // Button was just PRESSED
+                isLongPress = false;
+                lastLightPressTime = millis();
+                clickCount++;
+                Serial.println("Button Pressed");
+
+            } else { // Button was just RELEASED
+                Serial.println("Button Released");
+                // If it was a long press, we don't do anything on release
+                // The action was handled in Step 3. We just reset the flag.
+                if (isLongPress) {
+                    isLongPress = false; 
+                }
+            }
         }
-        lastLightPressTime = 0;
     }
+      
+    lastLightToggleButtonState = reading; // Save the current reading for next time
+
+    // --- Step 3: Handle Continuous Long Press ---
+    // Part A: DETECT the start of a long press
+    // This block runs only ONCE when the long press threshold is crossed.
+    if (lightToggleButtonState == LOW && !isLongPress && (millis() - lastLightPressTime > longPressDelay)) {
+        Serial.println("Long Press Started!");
+        isLongPress = true;
+        clickCount = 0; // Cancel any pending single/double clicks
+    }
+   
+    // Part B: PERFORM the continuous action while in a long press state
+    // This block runs REPEATEDLY as long as the button is held.
+    if (isLongPress) {
+        // Rate-limit the action to avoid changing too fast
+        if (millis() - lastLongPressActionTime > longPressActionInterval) {
+            lastLongPressActionTime = millis(); // Update the time of the last action
+
+            Serial.println("...Executing continuous action");
+            if (mode == MAIN_LIGHT) {
+                changeWarmness();
+            } else {
+                rotateHue();
+            }
+        }
+    }
+
+
+    // --- Step 4: Detect Single and Double Clicks ---
+    // This check happens after the button has been released and the double-click window has passed
+    if (clickCount > 0 && lightToggleButtonState == HIGH && (millis() - lastLightPressTime) > doubleClickDelay) {
+        if (clickCount == 1) {
+            // SINGLE CLICK detected
+            Serial.println("Single Click Detected!");
+            toggleLight();
+        } else if (clickCount == 2) {
+            // DOUBLE CLICK detected
+            Serial.println("Double Click Detected!");
+            switchMode();
+        }
+        // Reset click counter after action
+        clickCount = 0;
+    }
+
+    // if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == LOW) {
+    //     if (!isLightTogglePressed) {
+    //         lastLightPressTime = millis();
+    //         isLightTogglePressed = true;
+    //         Serial.println("Light toggle pressed");
+    //     } else if (millis() - longPressDelay > lastLightPressTime) {
+    //         if (mode == MAIN_LIGHT){
+    //             changeWarmness();
+    //         } else {
+    //             rotateHue();
+    //         }
+    //     }
+    // }
+    // if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH && isLightTogglePressed) {
+    //     Serial.println("Light toggle released");
+    //     if (millis() - doubleClickDelay < lastLightPressTime) {
+    //         isLightTogglePressed = false;
+    //         if (++clickCount == 2) {
+    //             clickCount = 0;
+    //             switchMode();
+    //         }
+    //     } else if (millis() - longPressDelay < lastLightPressTime) {
+    //         clickCount = 0;
+    //         toggleLight();
+    //         isLightTogglePressed = false;
+    //         lastLightPressTime = 0;
+    //     }
+    // }
 
     if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
         fanSpeedUpPressed = true;
@@ -171,36 +341,36 @@ void loop() {
         fanSpeedDownPressed = false;
     }
 
-    // --- Bluetooth Classic Communication ---
-    if (SerialBT.available()) {
-        String command = SerialBT.readStringUntil('\n'); // Read incoming command
-        command.trim(); // Remove any whitespace
+    // // --- Bluetooth Classic Communication ---
+    // if (SerialBT.available()) {
+    //     String command = SerialBT.readStringUntil('\n'); // Read incoming command
+    //     command.trim(); // Remove any whitespace
 
-        Serial.print("Received BT Command: ");
-        Serial.println(command);
+    //     Serial.print("Received BT Command: ");
+    //     Serial.println(command);
 
-        if (command == "L+") {
-            increaseBrightness();
-        } else if (command == "L-") {
-            decreaseBrightness();
-        } else if (command == "LO") {
-            toggleLight();
-        } else if (command == "F+") {
-            increaseFanSpeed();
-        } else if (command == "F-") {
-            decreaseFanSpeed();
-        }
-        // Example for future: Light Temperature control via BT
-        else if (command.startsWith("LT")) {
-             int tempVal = command.substring(2).toInt(); // Extract number after "LT"
-             setLightTemperature(tempVal);
-        }
+    //     if (command == "L+") {
+    //         increaseBrightness();
+    //     } else if (command == "L-") {
+    //         decreaseBrightness();
+    //     } else if (command == "LO") {
+    //         toggleLight();
+    //     } else if (command == "F+") {
+    //         increaseFanSpeed();
+    //     } else if (command == "F-") {
+    //         decreaseFanSpeed();
+    //     }
+    //     // Example for future: Light Temperature control via BT
+    //     else if (command.startsWith("LT")) {
+    //          int tempVal = command.substring(2).toInt(); // Extract number after "LT"
+    //          setLightTemperature(tempVal);
+    //     }
 
-        // Send status back to connected Bluetooth device
-        SerialBT.print("STATUS: Light_"); SerialBT.print(lightOn ? "ON" : "OFF");
-        SerialBT.print(" Brightness_"); SerialBT.print(currentBrightness);
-        SerialBT.print(" Fan_"); SerialBT.println(currentFanSpeed);
-    }
+    //     // Send status back to connected Bluetooth device
+    //     SerialBT.print("STATUS: Light_"); SerialBT.print(lightOn ? "ON" : "OFF");
+    //     SerialBT.print(" Brightness_"); SerialBT.print(currentBrightness);
+    //     SerialBT.print(" Fan_"); SerialBT.println(currentFanSpeed);
+    // }
 
     delay(10); // Small delay to prevent continuous re-reading in loop
 }
