@@ -51,6 +51,94 @@ const unsigned long longPressActionInterval = 50; // Call action every 50ms
 
 unsigned long lastButtonPressTime[5]; // Array to store last press time for each button
 
+// Data payload to send to the light.
+
+const uint8_t BT_PREFIX[] = { 0x01, 0xfe, 0x00, 0x00, 0x51, 0x81, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d };
+const uint8_t BT_SUFFIX[] = { 0x0e, 0x00 };
+
+const uint8_t LIGHT_ON = 0X01;
+const uint8_t LIGHT_OFF = 0X02;
+const uint8_t ON_OFF_DATA_PREFIX[] = { 0x07, 0x01, 0x03, 0x01 }; // follow with on/off value
+
+const uint8_t MIN_INTENSITY = 0X01;
+const uint8_t MAX_INTENSITY = 0X10;
+const uint8_t INTENSITY_DATA_PREFIX[] = { 0x07, 0x01, 0x03, 0x02 }; // follow with intensity
+
+const uint8_t MIN_WARMNESS = 0X00;
+const uint8_t MAX_WARMNESS = 0XFA;
+const uint8_t WARMNESS_DATA_PREFIX[] = { 0x07, 0x01, 0x03, 0x03 }; // follow with warmness
+
+const uint8_t RGB_DATA_PREFIX[] = { 0x0A, 0x02, 0x03, 0x0C }; // follow with I R G B
+
+const uint8_t MIN_FAN_SPEED = 0;
+const uint8_t MAX_FAN_SPEED = 3;
+const uint8_t FAN_SPEED_DATA_PREFIX[] = { 0x07, 0x0e, 0x03, 0x03 }; // follow with fan speed (0, 1, 2 or 3)
+
+const int BT_LIGHT_ON_OFF_COMMAND = 0;
+const int BT_INTENSITY_COMMAND = 1;
+const int BT_WARMNESS_COMMAND = 2;
+const int BT_RGB_COMMAND = 3;
+const int BT_FAN_SPEED_COMMAND = 4;
+
+const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX };
+
+void sendBtCommand(int command) {
+
+    // Define a buffer large enough for the biggest possible command (RGB)
+    const int MAX_PACKET_SIZE = sizeof(BT_PREFIX) + 4 + 4 + sizeof(BT_SUFFIX);
+    uint8_t packetBuffer[MAX_PACKET_SIZE];
+    
+    // Use a variable to track the final size of the packet
+    size_t packetSize = 0;
+    if (command < 0 || command > 4) {
+        Serial.printf("invalid command %d", command);
+        return;
+    }
+
+    // 1. Copy the 17-byte prefix into the buffer
+    memcpy(packetBuffer, BT_PREFIX, sizeof(BT_PREFIX));
+    packetSize += sizeof(BT_PREFIX);
+    
+    // 2. Copy the 4-byte command into the buffer
+    memcpy(&packetBuffer[packetSize], BT_COMMANDS[command], 4);
+    packetSize += 4;
+
+    // 3. Append the variable payload byte(s) to the buffer
+    switch(command) {
+        case BT_LIGHT_ON_OFF_COMMAND:
+            packetBuffer[packetSize++] = (lightOn ? LIGHT_ON : LIGHT_OFF);
+            break;
+
+        case BT_INTENSITY_COMMAND:
+            packetBuffer[packetSize++] = (uint8_t)constrain(currentBrightness, MIN_INTENSITY, MAX_INTENSITY);
+            break;
+
+        case BT_WARMNESS_COMMAND:
+            packetBuffer[packetSize++] = (uint8_t)constrain(currentLightWarmness, MIN_WARMNESS, MAX_WARMNESS);
+            break;
+
+        case BT_RGB_COMMAND:
+            // This is the multi-byte case
+            packetBuffer[packetSize++] = (uint8_t)ringR;
+            packetBuffer[packetSize++] = (uint8_t)ringG;
+            packetBuffer[packetSize++] = (uint8_t)ringB;
+            packetBuffer[packetSize++] = (uint8_t)currentBrightness;
+            break;
+
+        case BT_FAN_SPEED_COMMAND:
+            packetBuffer[packetSize++] = (uint8_t)constrain(currentFanSpeed, MIN_FAN_SPEED, MAX_FAN_SPEED);
+            break;
+    }
+    
+    // 4. Append the final suffix byte
+    memcpy(&packetBuffer[packetSize], BT_SUFFIX, sizeof(BT_SUFFIX));
+    packetSize += sizeof(BT_SUFFIX);
+    
+    // 5. Write the entire composed packet in a single, efficient call
+    SerialBT.write(packetBuffer, packetSize);
+    SerialBT.flush();
+}
+
 // Function to handle button presses more generically
 bool isButtonPressed(int pin, int buttonIndex) {
     bool buttonState = digitalRead(pin) == LOW; // Button is active LOW (pressed)
@@ -84,6 +172,7 @@ void toggleLight() {
 }
 
 void rotateHue() {
+    if (!lightOn) return;
     hue = (++hue) % 100;
     recomputeRGB();
 }
@@ -152,7 +241,7 @@ void decreaseBrightness() {
 
 // --- Fan Control Functions ---
 void setFanSpeed(int speed) {
-    currentFanSpeed = constrain(speed, 0, 3); // 0=Off, 1=Low, 2=Medium, 3=High
+    currentFanSpeed = constrain(speed, MIN_FAN_SPEED, MAX_FAN_SPEED); // 0=Off, 1=Low, 2=Medium, 3=High
     String speedText;
     switch (currentFanSpeed) {
         case 0: speedText = "Off"; break;
@@ -268,10 +357,11 @@ void loop() {
         if (millis() - lastLongPressActionTime > longPressActionInterval) {
             lastLongPressActionTime = millis(); // Update the time of the last action
 
-            Serial.println("...Executing continuous action");
             if (mode == MAIN_LIGHT) {
+                Serial.println("...Executing continuous action. mode: MAIN_LIGHT");
                 changeWarmness();
             } else {
+                Serial.println("...Executing continuous action. mode: RGB_RING");
                 rotateHue();
             }
         }
@@ -293,35 +383,6 @@ void loop() {
         // Reset click counter after action
         clickCount = 0;
     }
-
-    // if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == LOW) {
-    //     if (!isLightTogglePressed) {
-    //         lastLightPressTime = millis();
-    //         isLightTogglePressed = true;
-    //         Serial.println("Light toggle pressed");
-    //     } else if (millis() - longPressDelay > lastLightPressTime) {
-    //         if (mode == MAIN_LIGHT){
-    //             changeWarmness();
-    //         } else {
-    //             rotateHue();
-    //         }
-    //     }
-    // }
-    // if (digitalRead(LIGHT_TOGGLE_BTN_PIN) == HIGH && isLightTogglePressed) {
-    //     Serial.println("Light toggle released");
-    //     if (millis() - doubleClickDelay < lastLightPressTime) {
-    //         isLightTogglePressed = false;
-    //         if (++clickCount == 2) {
-    //             clickCount = 0;
-    //             switchMode();
-    //         }
-    //     } else if (millis() - longPressDelay < lastLightPressTime) {
-    //         clickCount = 0;
-    //         toggleLight();
-    //         isLightTogglePressed = false;
-    //         lastLightPressTime = 0;
-    //     }
-    // }
 
     if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
         fanSpeedUpPressed = true;
