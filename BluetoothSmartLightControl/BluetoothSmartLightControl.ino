@@ -146,10 +146,10 @@ void sendBtCommand(int command) {
 
         case BT_RGB_COMMAND:
             // This is the multi-byte case
+            packetBuffer[packetSize++] = (uint8_t)currentBrightness;
             packetBuffer[packetSize++] = (uint8_t)ringR;
             packetBuffer[packetSize++] = (uint8_t)ringG;
             packetBuffer[packetSize++] = (uint8_t)ringB;
-            packetBuffer[packetSize++] = (uint8_t)currentBrightness;
             break;
 
         case BT_FAN_SPEED_COMMAND:
