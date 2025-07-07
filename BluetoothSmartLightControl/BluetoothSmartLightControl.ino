@@ -42,6 +42,10 @@ int clickCount = 0;
 
 // --- Bluetooth Classic Setup ---
 BluetoothSerial SerialBT;
+uint8_t targetDeviceAddressArray[6] = {0xC9, 0xA3, 0x05, 0x36, 0xC4, 0x72}; 
+BTAddress targetDeviceAddress = BTAddress(targetDeviceAddressArray); 
+bool deviceConnected = false;
+bool deviceFound = false;
 
 // --- Debounce Variables for Buttons ---
 const long debounceDelay = 50; // ms
@@ -52,7 +56,8 @@ const unsigned long longPressActionInterval = 50; // Call action every 50ms
 unsigned long lastButtonPressTime[5]; // Array to store last press time for each button
 
 // Data payload to send to the light.
-
+// 020300190015004f0013ff2101
+const uint8_t BT_PREFIX2[] = { 0x01, 0xfe, 0x00, 0x00, 0x51, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80 };
 const uint8_t BT_PREFIX[] = { 0x01, 0xfe, 0x00, 0x00, 0x51, 0x81, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d };
 const uint8_t BT_SUFFIX[] = { 0x0e, 0x00 };
 
@@ -80,28 +85,50 @@ const int BT_WARMNESS_COMMAND = 2;
 const int BT_RGB_COMMAND = 3;
 const int BT_FAN_SPEED_COMMAND = 4;
 
-const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX };
+
+const uint8_t UNKNOWN_1[] = { 0x07, 0x02, 0x02, 0x01, 0x00 }; 
+const uint8_t UNKNOWN_2[] = { 0x07, 0x02, 0x03, 0x01, 0x01 }; 
+const uint8_t UNKNOWN_3[] = { 0x07, 0x02, 0x03, 0x04, 0x01 }; 
+const uint8_t UNKNOWN_4[] = { 0x07, 0x02, 0x03, 0x04, 0x00 }; 
+const uint8_t UNKNOWN_5[] = { 0x07, 0x02, 0x03, 0x04, 0x03 }; 
+const uint8_t UNKNOWN_6[] = { 0x07, 0x02, 0x03, 0x04, 0x04 }; 
+const uint8_t UNKNOWN_7[] = { 0x07, 0x02, 0x03, 0x04, 0x07 }; 
+
+const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX,
+                                UNKNOWN_1, UNKNOWN_2, UNKNOWN_3, UNKNOWN_4, UNKNOWN_5, UNKNOWN_6, UNKNOWN_7};
 
 void sendBtCommand(int command) {
 
-    // Define a buffer large enough for the biggest possible command (RGB)
-    const int MAX_PACKET_SIZE = sizeof(BT_PREFIX) + 4 + 4 + sizeof(BT_SUFFIX);
+    const int MAX_PACKET_SIZE = 128;
     uint8_t packetBuffer[MAX_PACKET_SIZE];
     
     // Use a variable to track the final size of the packet
     size_t packetSize = 0;
-    if (command < 0 || command > 4) {
+    if (command < 0 || command >= 5) {
         Serial.printf("invalid command %d", command);
         return;
     }
-
+    // Serial.print("sending BT command ");
+    // Serial.println(command);
+    // if (command == 12) {
+    //     Serial.print("Data: ");
+    //     memcpy(packetBuffer, BT_PREFIX2, sizeof(BT_PREFIX2));
+    //     packetSize += sizeof(BT_PREFIX2);
+    //     Serial.write(packetBuffer, packetSize);
+    //     Serial.println();
+    //     SerialBT.write(packetBuffer, packetSize);
+    //     SerialBT.flush();
+    //     return;
+    // }
+    // Serial.println("sending known BT command");
     // 1. Copy the 17-byte prefix into the buffer
     memcpy(packetBuffer, BT_PREFIX, sizeof(BT_PREFIX));
     packetSize += sizeof(BT_PREFIX);
     
-    // 2. Copy the 4-byte command into the buffer
-    memcpy(&packetBuffer[packetSize], BT_COMMANDS[command], 4);
-    packetSize += 4;
+    // 2. Copy the command into the buffer
+    int commandSize = sizeof(BT_COMMANDS[command]);
+    memcpy(&packetBuffer[packetSize], BT_COMMANDS[command], commandSize);
+    packetSize += commandSize;
 
     // 3. Append the variable payload byte(s) to the buffer
     switch(command) {
@@ -155,8 +182,10 @@ void setLightBrightness(int brightness) {
     if (mode == MAIN_LIGHT){
         Serial.print("Light Brightness: ");
         Serial.println(currentBrightness);
+        sendBtCommand(BT_INTENSITY_COMMAND);
     } else {
         recomputeRGB();
+        sendBtCommand(BT_RGB_COMMAND);
     }
     // In a real scenario, you'd send this PWM value to a MOSFET/LED driver.
     // For this prototype, the brightness change is internal logic and reported via serial/BT.
@@ -169,6 +198,7 @@ void toggleLight() {
     } else {
         Serial.println("Light OFF");
     }
+    sendBtCommand(BT_LIGHT_ON_OFF_COMMAND);
 }
 
 void rotateHue() {
@@ -217,6 +247,8 @@ void changeWarmness() {
 
     Serial.print("warmness: ");
     Serial.println(currentLightWarmness);
+
+    sendBtCommand(BT_WARMNESS_COMMAND);
 }
 
 void switchMode() {
@@ -251,7 +283,12 @@ void setFanSpeed(int speed) {
     }
     Serial.print("Fan Speed: ");
     Serial.println(speedText);
-    // In a real device, you'd send signals to a relay or motor driver.
+    sendBtCommand(BT_FAN_SPEED_COMMAND);
+    
+    // currentFanSpeed = constrain(speed, 0, 7);
+    // Serial.print("command: UNKNOWN_");
+    // Serial.println(currentFanSpeed+1);
+    // sendBtCommand(currentFanSpeed+5);
 }
 
 void increaseFanSpeed() {
@@ -270,6 +307,45 @@ void setLightTemperature(int tempValue) { // 0 for warm, 255 for cool
     // Feedback for this would primarily be seen in the actual light fixture's output.
 }
 
+
+// Function to scan for the target device
+void scanForTargetDevice() {
+  Serial.println("------------------------------------");
+  Serial.println("Scanning for devices (10 seconds)...");
+
+  BTScanResults* scanResults = SerialBT.discover(10000);
+
+  if (scanResults != nullptr && scanResults->getCount() > 0) {
+    Serial.printf("Found %d devices:\n", scanResults->getCount());
+    for (int i = 0; i < scanResults->getCount(); i++) {
+      BTAdvertisedDevice* device_result = scanResults->getDevice(i);
+      String name = device_result->getName().c_str();
+      BTAddress address = device_result->getAddress();
+      if (!address.toString().startsWith("c9:a3:05")) continue;
+      Serial.printf("  - Found Device: %s, Address: %s (target address: %s)\n", name.c_str(), address.toString().c_str(), targetDeviceAddress.toString().c_str());
+
+      // Check if this is the device we are looking for
+      if (address.equals(targetDeviceAddress)) {
+        Serial.println(">>> Target device found! <<<");
+        Serial.println(name);
+        deviceFound = true;
+        break; // Stop scanning once found
+      }
+    }
+  } else {
+    Serial.println("No classic Bluetooth devices found.");
+  }
+
+  if (scanResults != nullptr) {
+    // delete scanResults;
+  }
+
+  if (!deviceFound) {
+     Serial.println("Target device not found during scan. Will retry in 30 seconds.");
+  }
+}
+
+
 // --- Setup Function ---
 void setup() {
     Serial.begin(115200); // Initialize serial communication for debugging
@@ -287,149 +363,177 @@ void setup() {
         lastButtonPressTime[i] = 0;
     }
 
-    // Initialize Bluetooth Classic
-    SerialBT.begin("SmartDimmer_ESP32"); // Bluetooth device name
-    Serial.println("Bluetooth device name: SmartDimmer_ESP32");
-    Serial.println("The device started, now you can pair it to your phone!");
+    SerialBT.begin("ESP32_Master_BT", true); // "ESP32_Master_BT" is this ESP32's name, true for master mode
+    SerialBT.register_callback(btCallback); // Register the callback function
+
+    scanForTargetDevice();
+
+    // Serial.println("Bluetooth started in master mode.");
+    // Serial.print("Attempting to connect to: ");
+    // for (int i = 0; i < 6; i++) {
+    //     Serial.printf("%02X", targetDeviceAddressArray[i]);
+    //     if (i < 5) Serial.print(":");
+    // }
+    // Serial.println();
 
     // Set initial state
     setLightBrightness(0); // Light off initially
-    lightOn = false; // Ensure light is off
+    lightOn = false;       // Ensure light is off
     setFanSpeed(0);        // Fan off initially
 }
 
 // --- Loop Function ---
 void loop() {
-    // --- Button Polling ---
-    if (isButtonPressed(LIGHT_UP_BTN_PIN, 0)) {
-        increaseBrightness();
-    }
-    if (isButtonPressed(LIGHT_DOWN_BTN_PIN, 1)) {
-        decreaseBrightness();
-    }
 
-    int reading = digitalRead(LIGHT_TOGGLE_BTN_PIN);
+    if (!deviceFound) {
+        delay(5000);
+        scanForTargetDevice();
+    } else if (!deviceConnected) {
+        if (SerialBT.connect(targetDeviceAddressArray)) {
+            Serial.println("Connection attempt initiated.");
+        } else {
+            Serial.println("Failed to initiate connection. Retrying...");
+            delay(5000); // Wait before retrying to avoid spamming
+        }
+    } else {
+        // --- Button Polling ---
+        if (isButtonPressed(LIGHT_UP_BTN_PIN, 0)) {
+            increaseBrightness();
+        }
+        if (isButtonPressed(LIGHT_DOWN_BTN_PIN, 1)) {
+            decreaseBrightness();
+        }
 
-    // If the switch changed, due to noise or pressing, reset the debounce timer
-    if (reading != lastLightToggleButtonState) {
-        lastDebounceTime = millis();
-    }
+        int reading = digitalRead(LIGHT_TOGGLE_BTN_PIN);
 
-    // After the debounce delay, if the state is stable, process it
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-        // If the button state has changed
-        if (reading != lightToggleButtonState) {
-            lightToggleButtonState = reading;
+        // If the switch changed, due to noise or pressing, reset the debounce timer
+        if (reading != lastLightToggleButtonState) {
+            lastDebounceTime = millis();
+        }
 
-            // --- Step 2: Handle Press and Release Events ---
-            if (lightToggleButtonState == LOW) { // Button was just PRESSED
-                isLongPress = false;
-                lastLightPressTime = millis();
-                clickCount++;
-                Serial.println("Button Pressed");
+        // After the debounce delay, if the state is stable, process it
+        if ((millis() - lastDebounceTime) > debounceDelay) {
+            // If the button state has changed
+            if (reading != lightToggleButtonState) {
+                lightToggleButtonState = reading;
 
-            } else { // Button was just RELEASED
-                Serial.println("Button Released");
-                // If it was a long press, we don't do anything on release
-                // The action was handled in Step 3. We just reset the flag.
-                if (isLongPress) {
-                    isLongPress = false; 
+                // --- Step 2: Handle Press and Release Events ---
+                if (lightToggleButtonState == LOW) { // Button was just PRESSED
+                    isLongPress = false;
+                    lastLightPressTime = millis();
+                    clickCount++;
+                    Serial.println("Button Pressed");
+
+                } else { // Button was just RELEASED
+                    Serial.println("Button Released");
+                    // If it was a long press, we don't do anything on release
+                    // The action was handled in Step 3. We just reset the flag.
+                    if (isLongPress) {
+                        isLongPress = false; 
+                    }
                 }
             }
         }
-    }
-      
-    lastLightToggleButtonState = reading; // Save the current reading for next time
+        
+        lastLightToggleButtonState = reading; // Save the current reading for next time
 
-    // --- Step 3: Handle Continuous Long Press ---
-    // Part A: DETECT the start of a long press
-    // This block runs only ONCE when the long press threshold is crossed.
-    if (lightToggleButtonState == LOW && !isLongPress && (millis() - lastLightPressTime > longPressDelay)) {
-        Serial.println("Long Press Started!");
-        isLongPress = true;
-        clickCount = 0; // Cancel any pending single/double clicks
-    }
-   
-    // Part B: PERFORM the continuous action while in a long press state
-    // This block runs REPEATEDLY as long as the button is held.
-    if (isLongPress) {
-        // Rate-limit the action to avoid changing too fast
-        if (millis() - lastLongPressActionTime > longPressActionInterval) {
-            lastLongPressActionTime = millis(); // Update the time of the last action
+        // --- Step 3: Handle Continuous Long Press ---
+        // Part A: DETECT the start of a long press
+        // This block runs only ONCE when the long press threshold is crossed.
+        if (lightToggleButtonState == LOW && !isLongPress && (millis() - lastLightPressTime > longPressDelay)) {
+            Serial.println("Long Press Started!");
+            isLongPress = true;
+            clickCount = 0; // Cancel any pending single/double clicks
+        }
+    
+        // Part B: PERFORM the continuous action while in a long press state
+        // This block runs REPEATEDLY as long as the button is held.
+        if (isLongPress) {
+            // Rate-limit the action to avoid changing too fast
+            if (millis() - lastLongPressActionTime > longPressActionInterval) {
+                lastLongPressActionTime = millis(); // Update the time of the last action
 
-            if (mode == MAIN_LIGHT) {
-                Serial.println("...Executing continuous action. mode: MAIN_LIGHT");
-                changeWarmness();
-            } else {
-                Serial.println("...Executing continuous action. mode: RGB_RING");
-                rotateHue();
+                if (mode == MAIN_LIGHT) {
+                    Serial.println("...Executing continuous action. mode: MAIN_LIGHT");
+                    changeWarmness();
+                } else {
+                    Serial.println("...Executing continuous action. mode: RGB_RING");
+                    rotateHue();
+                }
             }
         }
-    }
 
-
-    // --- Step 4: Detect Single and Double Clicks ---
-    // This check happens after the button has been released and the double-click window has passed
-    if (clickCount > 0 && lightToggleButtonState == HIGH && (millis() - lastLightPressTime) > doubleClickDelay) {
-        if (clickCount == 1) {
-            // SINGLE CLICK detected
-            Serial.println("Single Click Detected!");
-            toggleLight();
-        } else if (clickCount == 2) {
-            // DOUBLE CLICK detected
-            Serial.println("Double Click Detected!");
-            switchMode();
+        // --- Step 4: Detect Single and Double Clicks ---
+        // This check happens after the button has been released and the double-click window has passed
+        if (clickCount > 0 && lightToggleButtonState == HIGH && (millis() - lastLightPressTime) > doubleClickDelay) {
+            if (clickCount == 1) {
+                // SINGLE CLICK detected
+                Serial.println("Single Click Detected!");
+                toggleLight();
+            } else if (clickCount == 2) {
+                // DOUBLE CLICK detected
+                Serial.println("Double Click Detected!");
+                switchMode();
+            }
+            // Reset click counter after action
+            clickCount = 0;
         }
-        // Reset click counter after action
-        clickCount = 0;
+
+        if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
+            fanSpeedUpPressed = true;
+            increaseFanSpeed();
+        }
+        if (digitalRead(FAN_SPEED_UP_BTN_PIN) == HIGH && fanSpeedUpPressed) {
+            fanSpeedUpPressed = false;
+        }
+        
+        if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == LOW && !fanSpeedDownPressed) {
+            fanSpeedDownPressed = true;
+            decreaseFanSpeed();
+        }
+        if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == HIGH && fanSpeedDownPressed) {
+            fanSpeedDownPressed = false;
+        }
     }
-
-    if (digitalRead(FAN_SPEED_UP_BTN_PIN) == LOW && !fanSpeedUpPressed) {
-        fanSpeedUpPressed = true;
-        increaseFanSpeed();
-    }
-    if (digitalRead(FAN_SPEED_UP_BTN_PIN) == HIGH && fanSpeedUpPressed) {
-        fanSpeedUpPressed = false;
-    }
-    
-    if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == LOW && !fanSpeedDownPressed) {
-        fanSpeedDownPressed = true;
-        decreaseFanSpeed();
-    }
-    if (digitalRead(FAN_SPEED_DOWN_BTN_PIN) == HIGH && fanSpeedDownPressed) {
-        fanSpeedDownPressed = false;
-    }
-
-    // // --- Bluetooth Classic Communication ---
-    // if (SerialBT.available()) {
-    //     String command = SerialBT.readStringUntil('\n'); // Read incoming command
-    //     command.trim(); // Remove any whitespace
-
-    //     Serial.print("Received BT Command: ");
-    //     Serial.println(command);
-
-    //     if (command == "L+") {
-    //         increaseBrightness();
-    //     } else if (command == "L-") {
-    //         decreaseBrightness();
-    //     } else if (command == "LO") {
-    //         toggleLight();
-    //     } else if (command == "F+") {
-    //         increaseFanSpeed();
-    //     } else if (command == "F-") {
-    //         decreaseFanSpeed();
-    //     }
-    //     // Example for future: Light Temperature control via BT
-    //     else if (command.startsWith("LT")) {
-    //          int tempVal = command.substring(2).toInt(); // Extract number after "LT"
-    //          setLightTemperature(tempVal);
-    //     }
-
-    //     // Send status back to connected Bluetooth device
-    //     SerialBT.print("STATUS: Light_"); SerialBT.print(lightOn ? "ON" : "OFF");
-    //     SerialBT.print(" Brightness_"); SerialBT.print(currentBrightness);
-    //     SerialBT.print(" Fan_"); SerialBT.println(currentFanSpeed);
-    // }
-
     delay(10); // Small delay to prevent continuous re-reading in loop
+
+}
+
+
+// Bluetooth event callback function
+void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
+    if (event == ESP_SPP_OPEN_EVT) { // Client connection established (SPP_OPEN_EVT is for master connecting to slave)
+        Serial.println("Target device connected successfully!");
+        deviceConnected = true;
+
+        // Try to get the remote device name here
+        // The remote name might not be immediately available after ESP_SPP_OPEN_EVT.
+        // It's often retrieved during the discovery process.
+        // For classic BT, retrieving the name of the *connected* device directly
+        // after connection via the `BluetoothSerial` library's simple API can be tricky.
+        // You generally get the address from param->srv_open.rem_bda (if acting as a slave)
+        // or from the connect function's return for master mode (which is just a bool).
+        // If you need the name, you'd typically have to perform a scan and resolve names,
+        // or have the slave device send its name after connection.
+
+        // However, you *do* have the remote MAC address here:
+        Serial.print("Connected to MAC: ");
+        for (int i = 0; i < 6; i++) {
+            Serial.printf("%02X", param->srv_open.rem_bda[i]);
+            if (i < 5) Serial.print(":");
+        }
+        Serial.println();
+
+        // There isn't a direct function like SerialBT.getConnectedDeviceName()
+        // in the standard BluetoothSerial library.
+        // If you absolutely need the name, you might need to implement a discovery
+        // phase and store the name associated with the MAC address.
+        // Or, if your target device is also an ESP32, you can program it to send
+        // its name upon connection.
+
+    } else if (event == ESP_SPP_CLOSE_EVT) {
+        Serial.println("Target device disconnected.");
+        deviceConnected = false;
+    }
+    // You can handle other events here as well, like ESP_SPP_START_EVT, ESP_SPP_DATA_IND_EVT, etc.
 }
