@@ -56,8 +56,6 @@ const unsigned long longPressActionInterval = 50; // Call action every 50ms
 unsigned long lastButtonPressTime[5]; // Array to store last press time for each button
 
 // Data payload to send to the light.
-// 020300190015004f0013ff2101
-const uint8_t BT_PREFIX2[] = { 0x01, 0xfe, 0x00, 0x00, 0x51, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80 };
 const uint8_t BT_PREFIX[] = { 0x01, 0xfe, 0x00, 0x00, 0x51, 0x81, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d };
 const uint8_t BT_SUFFIX[] = { 0x0e, 0x00 };
 
@@ -85,17 +83,7 @@ const int BT_WARMNESS_COMMAND = 2;
 const int BT_RGB_COMMAND = 3;
 const int BT_FAN_SPEED_COMMAND = 4;
 
-
-const uint8_t UNKNOWN_1[] = { 0x07, 0x02, 0x02, 0x01, 0x00 }; 
-const uint8_t UNKNOWN_2[] = { 0x07, 0x02, 0x03, 0x01, 0x01 }; 
-const uint8_t UNKNOWN_3[] = { 0x07, 0x02, 0x03, 0x04, 0x01 }; 
-const uint8_t UNKNOWN_4[] = { 0x07, 0x02, 0x03, 0x04, 0x00 }; 
-const uint8_t UNKNOWN_5[] = { 0x07, 0x02, 0x03, 0x04, 0x03 }; 
-const uint8_t UNKNOWN_6[] = { 0x07, 0x02, 0x03, 0x04, 0x04 }; 
-const uint8_t UNKNOWN_7[] = { 0x07, 0x02, 0x03, 0x04, 0x07 }; 
-
-const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX,
-                                UNKNOWN_1, UNKNOWN_2, UNKNOWN_3, UNKNOWN_4, UNKNOWN_5, UNKNOWN_6, UNKNOWN_7};
+const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX };
 
 void sendBtCommand(int command) {
 
@@ -108,23 +96,12 @@ void sendBtCommand(int command) {
         Serial.printf("invalid command %d", command);
         return;
     }
-    // Serial.print("sending BT command ");
-    // Serial.println(command);
-    // if (command == 12) {
-    //     Serial.print("Data: ");
-    //     memcpy(packetBuffer, BT_PREFIX2, sizeof(BT_PREFIX2));
-    //     packetSize += sizeof(BT_PREFIX2);
-    //     Serial.write(packetBuffer, packetSize);
-    //     Serial.println();
-    //     SerialBT.write(packetBuffer, packetSize);
-    //     SerialBT.flush();
-    //     return;
-    // }
+
     // Serial.println("sending known BT command");
     // 1. Copy the 17-byte prefix into the buffer
     memcpy(packetBuffer, BT_PREFIX, sizeof(BT_PREFIX));
     packetSize += sizeof(BT_PREFIX);
-    
+
     // 2. Copy the command into the buffer
     int commandSize = sizeof(BT_COMMANDS[command]);
     memcpy(&packetBuffer[packetSize], BT_COMMANDS[command], commandSize);
@@ -150,6 +127,7 @@ void sendBtCommand(int command) {
             packetBuffer[packetSize++] = (uint8_t)ringR;
             packetBuffer[packetSize++] = (uint8_t)ringG;
             packetBuffer[packetSize++] = (uint8_t)ringB;
+            packetBuffer[6] = 0x1c;
             break;
 
         case BT_FAN_SPEED_COMMAND:
@@ -185,7 +163,6 @@ void setLightBrightness(int brightness) {
         sendBtCommand(BT_INTENSITY_COMMAND);
     } else {
         recomputeRGB();
-        sendBtCommand(BT_RGB_COMMAND);
     }
     // In a real scenario, you'd send this PWM value to a MOSFET/LED driver.
     // For this prototype, the brightness change is internal logic and reported via serial/BT.
@@ -210,6 +187,7 @@ void rotateHue() {
 void recomputeRGB() {
     hslToRgb((float)(hue / 100.0), 1.0, (float)(currentBrightness/255.0), &ringR, &ringG, &ringB);
     Serial.printf("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)\n", ringR, ringG, ringB, hue, currentBrightness);
+    sendBtCommand(BT_RGB_COMMAND);
 }
 
 void hslToRgb(float h, float s, float l, int* r, int* g, int* b) {
@@ -255,9 +233,15 @@ void switchMode() {
     if (mode == MAIN_LIGHT) {
         mode = RGB_RING;
         Serial.println("switched to RGB Ring");
+        recomputeRGB();
+        delay(10);
+        recomputeRGB();
     } else {
         mode = MAIN_LIGHT;
         Serial.println("switched to Main Light");
+        sendBtCommand(BT_INTENSITY_COMMAND);
+        delay(10);
+        sendBtCommand(BT_INTENSITY_COMMAND);
     }
 }
 
@@ -284,11 +268,6 @@ void setFanSpeed(int speed) {
     Serial.print("Fan Speed: ");
     Serial.println(speedText);
     sendBtCommand(BT_FAN_SPEED_COMMAND);
-    
-    // currentFanSpeed = constrain(speed, 0, 7);
-    // Serial.print("command: UNKNOWN_");
-    // Serial.println(currentFanSpeed+1);
-    // sendBtCommand(currentFanSpeed+5);
 }
 
 void increaseFanSpeed() {
@@ -298,15 +277,6 @@ void increaseFanSpeed() {
 void decreaseFanSpeed() {
     setFanSpeed(currentFanSpeed - 1);
 }
-
-// --- Light Temperature Simulation (Future Expansion - no visual feedback on prototype) ---
-void setLightTemperature(int tempValue) { // 0 for warm, 255 for cool
-    Serial.print("Light Temperature (0=Warm, 255=Cool): ");
-    Serial.println(tempValue);
-    // In a real device, this would adjust the CCT of a tunable white light source.
-    // Feedback for this would primarily be seen in the actual light fixture's output.
-}
-
 
 // Function to scan for the target device
 void scanForTargetDevice() {
@@ -367,14 +337,6 @@ void setup() {
     SerialBT.register_callback(btCallback); // Register the callback function
 
     scanForTargetDevice();
-
-    // Serial.println("Bluetooth started in master mode.");
-    // Serial.print("Attempting to connect to: ");
-    // for (int i = 0; i < 6; i++) {
-    //     Serial.printf("%02X", targetDeviceAddressArray[i]);
-    //     if (i < 5) Serial.print(":");
-    // }
-    // Serial.println();
 
     // Set initial state
     setLightBrightness(0); // Light off initially
