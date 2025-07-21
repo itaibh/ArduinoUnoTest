@@ -1,21 +1,28 @@
 #include <BluetoothSerial.h> // For ESP32 Bluetooth Classic
+#include <AiEsp32RotaryEncoder.h>
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error "Bluetooth is not enabled! Please run `make menuconfig` to enable it"
 #endif
 
 // --- Pin Definitions (Updated based on your setup) ---
-const int LIGHT_UP_BTN_PIN = 16;   // Light Brightness Up
-const int LIGHT_DOWN_BTN_PIN = 17; // Light Brightness Down
-const int LIGHT_TOGGLE_BTN_PIN = 23; // Light ON/OFF (simulates knob push)
+// const int LIGHT_UP_BTN_PIN = 16;   // Light Brightness Up
+// const int LIGHT_DOWN_BTN_PIN = 17; // Light Brightness Down
+// const int LIGHT_TOGGLE_BTN_PIN = 18; // Light ON/OFF (simulates knob push)
 
-const int FAN_SPEED_UP_BTN_PIN = 18;   // Fan Speed Up
-const int FAN_SPEED_DOWN_BTN_PIN = 19; // Fan Speed Down
+const int ROTARY_ENCODER_CLK_PIN = 18;
+const int ROTARY_ENCODER_DT_PIN = 17;
+const int ROTARY_ENCODER_SW_PIN = 16; // Light ON/OFF (simulates knob push)
+
+const int FAN_SPEED_UP_BTN_PIN = 22;   // Fan Speed Up
+const int FAN_SPEED_DOWN_BTN_PIN = 23; // Fan Speed Down
 
 const int LIGHT_BRIGHTNESS_STEP = 15;
 
 const int MAIN_LIGHT = 0;
 const int RGB_RING = 1;
+
+const int ROTARY_ENCODER_STEPS_PER_NOTCH = 4;
 
 // --- State Variables ---
 int currentBrightness = 0; // 0-255 (for actual PWM light control)
@@ -84,6 +91,10 @@ const int BT_RGB_COMMAND = 3;
 const int BT_FAN_SPEED_COMMAND = 4;
 
 const uint8_t* BT_COMMANDS[] = { ON_OFF_DATA_PREFIX, INTENSITY_DATA_PREFIX, WARMNESS_DATA_PREFIX, RGB_DATA_PREFIX, FAN_SPEED_DATA_PREFIX };
+
+long lastRotaryPosition = 0;
+
+AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_SW_PIN, ROTARY_ENCODER_STEPS_PER_NOTCH);
 
 void sendBtCommand(int command) {
 
@@ -315,6 +326,44 @@ void scanForTargetDevice() {
   }
 }
 
+void onRotaryPushed() {
+  Serial.println("Rotary encoder button was pushed.");
+  // REPLACE THIS with your code for a button press.
+  // For example: bluetooth_turnOn("all_lamps");
+}
+
+void onRotaryReleased() {
+  Serial.println("Rotary encoder button was released.");
+  // REPLACE THIS with your code for a button release.
+  // For example: bluetooth_turnOff("all_lamps");
+}
+
+void onRotaryRotated(long newPosition) {
+  Serial.print("Rotary encoder was rotated. New position: ");
+  Serial.println(newPosition);
+  
+  long direction = newPosition - lastRotaryPosition;
+  if (direction > 0) {
+    Serial.println("Direction: Clockwise (CW)");
+    // REPLACE THIS with your code for clockwise rotation.
+    // For example: bluetooth_brightnessUp("active_lamp");
+  } else if (direction < 0) {
+    Serial.println("Direction: Counter-clockwise (CCW)");
+    // REPLACE THIS with your code for counter-clockwise rotation.
+    // For example: bluetooth_brightnessDown("active_lamp");
+  }
+  
+  // Update the position for the next rotation check
+  lastRotaryPosition = newPosition;
+}
+
+
+// --- ISR FOR INTERRUPT HANDLING ---
+// This function must be very short and fast.
+// It just tells the library to handle the event.
+void IRAM_ATTR readEncoderISR() {
+  rotaryEncoder.readEncoder_ISR();
+}
 
 // --- Setup Function ---
 void setup() {
@@ -322,9 +371,12 @@ void setup() {
     Serial.println("ESP32 Smart Dimmer Prototype Starting...");
 
     // Initialize button pins with internal pull-up resistors
-    pinMode(LIGHT_UP_BTN_PIN, INPUT_PULLUP);
-    pinMode(LIGHT_DOWN_BTN_PIN, INPUT_PULLUP);
-    pinMode(LIGHT_TOGGLE_BTN_PIN, INPUT_PULLUP);
+    // pinMode(LIGHT_UP_BTN_PIN, INPUT_PULLUP);
+    // pinMode(LIGHT_DOWN_BTN_PIN, INPUT_PULLUP);
+    // pinMode(LIGHT_TOGGLE_BTN_PIN, INPUT_PULLUP);
+    pinMode(ROTARY_ENCODER_CLK_PIN, INPUT_PULLUP);
+    pinMode(ROTARY_ENCODER_DT_PIN, INPUT_PULLUP);
+    pinMode(ROTARY_ENCODER_SW_PIN, INPUT_PULLUP);
     pinMode(FAN_SPEED_UP_BTN_PIN, INPUT_PULLUP);
     pinMode(FAN_SPEED_DOWN_BTN_PIN, INPUT_PULLUP);
 
@@ -333,24 +385,33 @@ void setup() {
         lastButtonPressTime[i] = 0;
     }
 
+    deviceFound = true;
+
     SerialBT.begin("ESP32_Master_BT", true); // "ESP32_Master_BT" is this ESP32's name, true for master mode
     SerialBT.register_callback(btCallback); // Register the callback function
 
-    scanForTargetDevice();
-
+    // scanForTargetDevice();
+    rotaryEncoder.begin();
+    // Attach the interrupt to the rotary encoder's CLK and DT pins
+    rotaryEncoder.setup(readEncoderISR);
+    
+    // Optional: Set a faster acceleration for smoother user experience
+    rotaryEncoder.setAcceleration(500); 
+    
     // Set initial state
-    setLightBrightness(0); // Light off initially
-    lightOn = false;       // Ensure light is off
-    setFanSpeed(0);        // Fan off initially
+    setLightBrightness(120);
+    lightOn = true;
+    setFanSpeed(1);
 }
 
 // --- Loop Function ---
 void loop() {
 
-    if (!deviceFound) {
-        delay(5000);
-        scanForTargetDevice();
-    } else if (!deviceConnected) {
+    // if (!deviceFound) {
+    //     delay(5000);
+    //     scanForTargetDevice();
+    // } else 
+    if (!deviceConnected) {
         if (SerialBT.connect(targetDeviceAddressArray)) {
             Serial.println("Connection attempt initiated.");
         } else {
@@ -359,14 +420,38 @@ void loop() {
         }
     } else {
         // --- Button Polling ---
-        if (isButtonPressed(LIGHT_UP_BTN_PIN, 0)) {
-            increaseBrightness();
-        }
-        if (isButtonPressed(LIGHT_DOWN_BTN_PIN, 1)) {
-            decreaseBrightness();
+        // if (isButtonPressed(LIGHT_UP_BTN_PIN, 0)) {
+        //     increaseBrightness();
+        // }
+        // if (isButtonPressed(LIGHT_DOWN_BTN_PIN, 1)) {
+        //     decreaseBrightness();
+        // }
+        
+        // --- Check for ROTATION events ---
+        // The encoderChanged() method from your header returns the change in position
+        // --- Check for ROTATION events ---
+        long change = rotaryEncoder.encoderChanged();
+        if (change != 0) {
+            onRotaryRotated(rotaryEncoder.readEncoder());
         }
 
-        int reading = digitalRead(LIGHT_TOGGLE_BTN_PIN);
+        // --- Check for BUTTON events ---
+        // The library now handles the push/release events for us.
+        ButtonState buttonState = rotaryEncoder.readButtonState();
+        
+        switch (buttonState) {
+            case BUT_PUSHED:
+                onRotaryPushed();
+                break;
+            case BUT_RELEASED:
+                onRotaryReleased();
+                break;
+            // We can ignore the other states (BUT_DOWN, BUT_UP, BUT_DISABLED)
+            // if we only care about the single event triggers.
+        }
+  
+  
+        int reading = digitalRead(ROTARY_ENCODER_SW_PIN);
 
         // If the switch changed, due to noise or pressing, reset the debounce timer
         if (reading != lastLightToggleButtonState) {
