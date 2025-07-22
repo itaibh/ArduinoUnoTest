@@ -1,9 +1,11 @@
 #include "LightController.h"
 #include <Arduino.h>
 
-const int LIGHT_BRIGHTNESS_STEP = 5;
-const uint8_t MIN_INTENSITY = 0x01;
-const uint8_t MAX_INTENSITY = 0x10;
+const int LIGHT_BRIGHTNESS_STEP = 1;
+const uint8_t MIN_INTENSITY_MAIN = 0x01;
+const uint8_t MAX_INTENSITY_MAIN = 0x10;
+const uint8_t MIN_INTENSITY_RING = 0x00;
+const uint8_t MAX_INTENSITY_RING = 0xFF;
 const uint8_t MIN_WARMNESS = 0x00;
 const uint8_t MAX_WARMNESS = 0xFA;
 
@@ -40,22 +42,22 @@ void LightController::toggle() {
 }
 
 void LightController::setBrightness(int newBrightness, bool forceUpdate) {
-  int oldBrightness = brightness;
-  brightness = constrain(newBrightness, 0, 255);
-  if (brightness != oldBrightness || forceUpdate) {
-    Serial.printf("Brightness set to: %d\n", brightness);
+  int oldBrightness = currentMode == MAIN_LIGHT ? brightnessMain : brightnessRing;
+  *brightness = constrain(newBrightness, minIntensity, maxIntensity);
+  if ((*brightness) != oldBrightness || forceUpdate) {
+    Serial.printf("Brightness set to: %d\n", *brightness);
     sendState();
   }
 }
 
 void LightController::increaseBrightness() {
   if (!isOn) return;
-  setBrightness(brightness + LIGHT_BRIGHTNESS_STEP);
+  setBrightness((*brightness) + LIGHT_BRIGHTNESS_STEP, false);
 }
 
 void LightController::decreaseBrightness() {
   if (!isOn) return;
-  setBrightness(brightness - LIGHT_BRIGHTNESS_STEP);
+  setBrightness((*brightness) - LIGHT_BRIGHTNESS_STEP, false);
 }
 
 void LightController::changeWarmness() {
@@ -79,7 +81,17 @@ void LightController::rotateHue() {
 }
 
 void LightController::switchMode() {
-  currentMode = (currentMode == MAIN_LIGHT) ? RGB_RING : MAIN_LIGHT;
+  if (currentMode == MAIN_LIGHT) {
+    currentMode = RGB_RING;
+    minIntensity = MIN_INTENSITY_RING;
+    maxIntensity = MAX_INTENSITY_RING;
+    brightness = &brightnessRing;
+  } else {
+    currentMode = MAIN_LIGHT;
+    minIntensity = MIN_INTENSITY_MAIN;
+    maxIntensity = MAX_INTENSITY_MAIN;
+    brightness = &brightnessMain;
+  }
   Serial.printf("Mode switched to: %s\n", (currentMode == MAIN_LIGHT) ? "Main Light" : "RGB Ring");
   // Resend state to apply current settings to the new mode
   sendState();
@@ -91,7 +103,7 @@ void LightController::sendState() {
   if (!btManager->isConnected()) return;
 
   if (currentMode == MAIN_LIGHT) {
-    uint8_t intensityPayload[] = { (uint8_t)constrain(brightness, MIN_INTENSITY, MAX_INTENSITY) };
+    uint8_t intensityPayload[] = { (uint8_t)constrain(brightnessMain, MIN_INTENSITY_MAIN, MAX_INTENSITY_MAIN) };
     btManager->sendCommand(CMD_LIGHT_INTENSITY, intensityPayload, sizeof(intensityPayload));
 
     uint8_t warmnessPayload[] = { (uint8_t)constrain(warmness, MIN_WARMNESS, MAX_WARMNESS) };
@@ -103,11 +115,11 @@ void LightController::sendState() {
 
 void LightController::sendRGBState() {
   int r, g, b;
-  hslToRgb((float)hue / 100.0, 1.0, (float)brightness / 255.0, &r, &g, &b);
-  Serial.printf("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)\n", r, g, b, hue, brightness);
+  hslToRgb((float)hue / 100.0, 1.0, (float)brightnessRing / 255.0, &r, &g, &b);
+  Serial.printf("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)\n", r, g, b, hue, brightnessRing);
 
   uint8_t payload[] = {
-    (uint8_t)brightness,
+    (uint8_t)brightnessRing,
     (uint8_t)r,
     (uint8_t)g,
     (uint8_t)b

@@ -27,7 +27,7 @@ void InputHandler::begin() {
   // Initialize rotary encoder
   rotaryEncoder.begin();
   rotaryEncoder.setup(readEncoderISR);
-  rotaryEncoder.setAcceleration(250);
+  rotaryEncoder.setAcceleration(50);
 }
 
 void InputHandler::update() {

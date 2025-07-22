@@ -98,6 +98,16 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t* payload, size
 
   SerialBT.write(packetBuffer, packetSize);
   SerialBT.flush();
+
+  // Print to Serial Monitor as hex string
+  Serial.print("Sending packet (HEX): ");
+  for (size_t i = 0; i < packetSize; i++) {
+    // Use Serial.printf for formatted output (two digits, leading zero if needed)
+    // or Serial.print(packetBuffer[i], HEX) and handle padding manually.
+    // printf is generally cleaner for this.
+    Serial.printf("%02X ", packetBuffer[i]);
+  }
+  Serial.println();  // Newline at the end for readability
 }
 
 void BluetoothManager::btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t* param) {

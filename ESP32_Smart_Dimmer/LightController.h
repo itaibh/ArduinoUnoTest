@@ -25,11 +25,16 @@ public:
 private:
   BluetoothManager* btManager;
   bool isOn = false;
-  int brightness = 128;  // 0-255
+  int brightnessMain = 16;  // 1-16
+  int brightnessRing = 128;  // 0-255
   int warmness = 0;      // 0-250 (0xFA)
   int hue = 0;           // 0-99
   LightMode currentMode = MAIN_LIGHT;
   int warmnessStep = 10;
+
+  int* brightness = &brightnessMain;  // current light mode brightness
+  int minIntensity = 1;  // current light mode min intensity
+  int maxIntensity = 16; // current light mode max intensity
 
   void sendState();
   void sendRGBState();
