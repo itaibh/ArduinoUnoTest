@@ -8,6 +8,11 @@ enum LightMode {
   RGB_RING
 };
 
+class ILightControllerListener {
+  public:
+  virtual void onLightControllerChange(LightMode light_mode, int main_brightness, int main_warmness, int ring_brightness, int ring_hue) = 0;
+};
+
 class LightController {
 public:
   LightController(BluetoothManager* bt);
@@ -21,6 +26,7 @@ public:
   void rotateHue();
   void switchMode();
   LightMode getMode();
+  void registerListener(ILightControllerListener* listener);
 
 private:
   BluetoothManager* btManager;
@@ -40,6 +46,9 @@ private:
   void sendRGBState();
   static void hslToRgb(float h, float s, float l, int* r, int* g, int* b);
   static float hueToRgb(float p, float q, float t);
+  
+  ILightControllerListener* listener;
+  void invokeCallback();
 };
 
 #endif  // LIGHT_CONTROLLER_H

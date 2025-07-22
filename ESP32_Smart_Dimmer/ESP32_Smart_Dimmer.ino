@@ -2,6 +2,7 @@
 #include "LightController.h"
 #include "FanController.h"
 #include "InputHandler.h"
+#include "StorageHandler.h"
 
 // --- Pin Definitions ---
 const int ROTARY_ENCODER_CLK_PIN = 18;

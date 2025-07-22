@@ -31,6 +31,7 @@ void LightController::turnOff() {
     Serial.println("Light OFF");
     uint8_t payload[] = { 0x02 };  // OFF
     btManager->sendCommand(CMD_LIGHT_ON_OFF, payload, sizeof(payload));
+    invokeCallback();
   }
 }
 
@@ -111,6 +112,7 @@ void LightController::sendState() {
   } else {
     sendRGBState();
   }
+  invokeCallback();
 }
 
 void LightController::sendRGBState() {
@@ -147,4 +149,10 @@ float LightController::hueToRgb(float p, float q, float t) {
   if (t < 1.0 / 2.0) return q;
   if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
   return p;
+}
+
+void LightController::invokeCallback(){
+  if (listener){
+    listener->onLightControllerChange(currentMode, brightnessMain, warmness, brightnessRing, hue);
+  }
 }
