@@ -20,7 +20,10 @@ void FanController::setSpeed(int speed) {
     }
     Serial.printf("Fan Speed set to: %s (%d)\n", speedText.c_str(), currentSpeed);
     if (listener) {
+      Serial.println("invoking callback");
       listener->onFanControllerChange(speed);
+    } else {
+      Serial.println("callback is null");
     }
     uint8_t payload[] = { (uint8_t)currentSpeed };
     btManager->sendCommand(CMD_FAN_SPEED, payload, sizeof(payload));

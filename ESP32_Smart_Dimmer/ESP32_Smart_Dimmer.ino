@@ -29,6 +29,9 @@ InputHandler inputHandler(
   ROTARY_ENCODER_STEPS_PER_NOTCH,
   FAN_SPEED_UP_BTN_PIN,
   FAN_SPEED_DOWN_BTN_PIN);
+StorageHandler storageHandler(
+  &lightController,
+  &fanController);
 
 void setup() {
   Serial.begin(115200);
@@ -51,6 +54,7 @@ void loop() {
   // Each component handles its own timing and state.
   btManager.update();
   inputHandler.update();
-
+  storageHandler.tryStore();
+  
   delay(5);  // Small delay for stability
 }

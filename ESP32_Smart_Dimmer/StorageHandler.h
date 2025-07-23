@@ -14,10 +14,25 @@ struct DeviceConfig {
   uint8_t ring_brightness;
 };
 
+inline bool operator==(const DeviceConfig& lhs, const DeviceConfig& rhs) {
+    return (lhs.mac_address     == rhs.mac_address &&
+            lhs.fan_speed       == rhs.fan_speed &&
+            lhs.light_mode      == rhs.light_mode &&
+            lhs.main_brightness == rhs.main_brightness &&
+            lhs.main_warmness   == rhs.main_warmness &&
+            lhs.ring_hue        == rhs.ring_hue &&
+            lhs.ring_brightness == rhs.ring_brightness);
+}
+
+inline bool operator!=(const DeviceConfig& lhs, const DeviceConfig& rhs) {
+    return !(lhs == rhs);
+}
+
 class StorageHandler : public IFanControllerListener, public ILightControllerListener{
 public:
   StorageHandler(LightController* lc, FanController* fc);
   void store();
+  void tryStore();
   void restore(String mac_address);
   DeviceConfig getDeviceConfig() {
     return deviceConfig;
@@ -27,10 +42,14 @@ public:
   void onFanControllerChange(int fan_speed);
 
 private:
+
   LightController* lightCtrl;
   FanController* fanCtrl;
 
   Preferences preferences;
   DeviceConfig deviceConfig;
+
+  DeviceConfig lastSavedDeviceConfig;
+  long lastSaveTime;
 };
 #endif  // STORAGE_HANDLER_H
