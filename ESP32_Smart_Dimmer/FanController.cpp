@@ -37,3 +37,7 @@ void FanController::increaseSpeed() {
 void FanController::decreaseSpeed() {
   setSpeed(currentSpeed - 1);
 }
+
+void FanController::registerListener(IFanControllerListener* listener) {
+  this->listener = listener;
+}

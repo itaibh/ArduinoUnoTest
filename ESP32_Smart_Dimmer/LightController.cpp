@@ -151,6 +151,10 @@ float LightController::hueToRgb(float p, float q, float t) {
   return p;
 }
 
+void LightController::registerListener(ILightControllerListener* listener) {
+  this->listener = listener;
+}
+
 void LightController::invokeCallback(){
   if (listener){
     listener->onLightControllerChange(currentMode, brightnessMain, warmness, brightnessRing, hue);

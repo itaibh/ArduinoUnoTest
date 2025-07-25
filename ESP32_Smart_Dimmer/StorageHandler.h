@@ -51,5 +51,6 @@ private:
 
   DeviceConfig lastSavedDeviceConfig;
   long lastSaveTime;
+  long lastChangeDetectedTime;
 };
 #endif  // STORAGE_HANDLER_H
