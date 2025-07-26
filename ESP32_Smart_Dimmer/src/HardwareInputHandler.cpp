@@ -1,4 +1,4 @@
-#include "InputHandler.h"
+#include "HardwareInputHandler.h"
 
 // --- Global instance pointer for the ISR ---
 HardwareInputHandler* globalInputHandler = nullptr;

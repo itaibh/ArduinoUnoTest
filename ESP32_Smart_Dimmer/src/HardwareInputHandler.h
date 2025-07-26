@@ -1,5 +1,5 @@
-#ifndef INPUT_HANDLER_H
-#define INPUT_HANDLER_H
+#ifndef HARDWARE_INPUT_HANDLER_H
+#define HARDWARE_INPUT_HANDLER_H
 
 #include <AiEsp32RotaryEncoder.h>
 #include "LightController.h"
@@ -47,4 +47,4 @@ private:
   void pollFanButtons();
 };
 
-#endif  // INPUT_HANDLER_H
+#endif  // HARDWARE_INPUT_HANDLER_H

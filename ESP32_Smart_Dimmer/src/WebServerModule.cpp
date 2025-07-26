@@ -6,7 +6,8 @@
 // call methods on that instance. For now, we assume global access via externs.
 
 // Constructor - initializes the WebServer on port 80
-WebServerModule::WebServerModule() : _server(80) {}
+WebServerModule::WebServerModule(LightController* lc, FanController* fc) 
+: _server(80),  lightCtrl(lc), fanCtrl(fc)  {}
 
 bool WebServerModule::begin() {
     // Initialize SPIFFS before serving files
@@ -65,6 +66,14 @@ void WebServerModule::handleControl() {
     // setRgbHue(rgbHue);
     // setRgbBrightness(rgbBrightness);
     // setFanSpeed(fanSpeed);
+    if (mode == "off") {
+        lightCtrl->turnOff();
+    }
+    else {
+        LightMode lightMode = mode == "main" ? LightMode::MAIN_LIGHT : LightMode::RGB_RING;
+        lightCtrl->setAll(lightMode, brightness, warmness, rgbBrightness, rgbHue);
+    }
+    fanCtrl->setSpeed(fanSpeed);
 
     _server.send(200, "text/plain", "OK"); // Send a simple "OK" back to the client
 }

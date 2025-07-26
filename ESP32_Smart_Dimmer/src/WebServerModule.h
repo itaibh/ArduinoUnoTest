@@ -3,12 +3,14 @@
 #define WEB_SERVER_MODULE_H
 
 #include <WebServer.h>
-#include <SPIFFS.h> // Required for serving files from SPIFFS
+#include <SPIFFS.h>
+#include "LightController.h"
+#include "FanController.h"
 
 class WebServerModule {
 public:
     /** Constructor */
-    WebServerModule();
+    WebServerModule(LightController* lc, FanController* fc);
     
     /**
      * @brief Initializes and starts the web server.
@@ -24,6 +26,8 @@ public:
 
 private:
     WebServer _server; // Private instance of the WebServer
+    LightController* lightCtrl;
+    FanController* fanCtrl;
 
     // Private helper methods
     void handleRoot();

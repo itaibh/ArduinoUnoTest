@@ -3,11 +3,7 @@
 #define LIGHT_CONTROLLER_H
 
 #include "BluetoothManager.h"
-
-enum LightMode : uint8_t {
-  MAIN_LIGHT = 0,
-  RGB_RING = 1
-};
+#include "LightMode.h"
 
 class ILightControllerListener {
   public:

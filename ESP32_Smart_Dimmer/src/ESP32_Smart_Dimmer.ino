@@ -5,7 +5,7 @@
 #include "BluetoothManager.h"
 #include "LightController.h"
 #include "FanController.h"
-#include "InputHandler.h"
+#include "HardwareInputHandler.h"
 #include "StorageHandler.h"
 
 // --- Pin Definitions ---
@@ -38,7 +38,9 @@ StorageHandler storageHandler(
   &lightController,
   &fanController);
 WifiHandler wifiHandler;
-WebServerModule webServer;
+WebServerModule webServer(
+  &lightController,
+  &fanController);
 
 void listSpiffsFiles() {
     Serial.println("\n--- Listing SPIFFS Files ---");
