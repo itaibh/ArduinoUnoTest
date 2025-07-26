@@ -38,7 +38,7 @@ public:
 
 class BluetoothManager {
 public:
-  BluetoothManager(uint8_t* targetAddress, char* deviceName);
+  BluetoothManager(uint8_t* targetAddress, const char* deviceName);
   void begin();
   void update();  // Handles connection logic
   bool isConnected();

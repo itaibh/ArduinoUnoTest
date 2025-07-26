@@ -15,7 +15,7 @@ const uint8_t FAN_SPEED_DATA_PREFIX[] = { 0x07, 0x0e, 0x03, 0x03 };
 const int MIN_SEND_INTERVAL = 100; // give bluetooth time to digest...
 const int MAX_PACKET_SIZE = 128;
 
-BluetoothManager::BluetoothManager(uint8_t* targetAddress, char* deviceName)
+BluetoothManager::BluetoothManager(uint8_t* targetAddress, const char* deviceName)
   : targetDeviceAddress(targetAddress), espDeviceName(deviceName) {
   instance = this;  // Set the static instance pointer
 }
@@ -147,6 +147,7 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
       deviceConnected = false;
       break;
     case ESP_SPP_DATA_IND_EVT:
+    /*
       Serial.printf("[millis: %ld] BT Data Received (Len: %d, Handle: %d, MTU: %d): ",
                     millis(), param->data_ind.len, param->data_ind.handle, ESP_SPP_MAX_MTU);
       
@@ -198,7 +199,7 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
         
         // Else, it's an unhandled status message or from a different function
       }
-
+*/
       break;
     default:
       break;

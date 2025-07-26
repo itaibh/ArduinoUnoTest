@@ -19,17 +19,17 @@
 
         <div class="control-group">
             <label for="brightness">Main Light Brightness:</label>
-            <input type="range" id="brightness" min="0" max="255" value="128" onchange="sendControl()">
+            <input type="range" id="brightness" min="1" max="16" value="16" onchange="sendControl()">
         </div>
 
         <div class="control-group">
             <label for="warmness">Main Light Warmness:</label>
-            <input type="range" id="warmness" min="0" max="255" value="128" onchange="sendControl()">
+            <input type="range" id="warmness" min="0" max="250" value="200" onchange="sendControl()">
         </div>
 
         <div class="control-group">
             <label for="rgbHue">RGB Ring Hue (0-360&deg;):</label>
-            <input type="range" id="rgbHue" min="0" max="360" value="0" onchange="sendControl()">
+            <input type="range" id="rgbHue" min="0" max="100" value="0" onchange="sendControl()">
         </div>
 
         <div class="control-group">

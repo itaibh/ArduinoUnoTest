@@ -93,7 +93,7 @@ void setup() {
 
   // Initialize all components
   btManager.begin();
-  inputHandler.begin();
+//   inputHandler.begin();
 
   Serial.println("Setup complete.");
 }
