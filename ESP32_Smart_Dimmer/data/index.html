@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Light Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/style.css"> </head>
+<body>
+    <div class="container">
+        <h1>Smart Light Control (Wi-Fi)</h1>
+
+        <div class="control-group">
+            <label for="lightMode">Light Mode:</label>
+            <select id="lightMode" onchange="sendControl()">
+                <option value="off">Off</option>
+                <option value="main">Main Light</option>
+                <option value="rgb">RGB Ring</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="brightness">Main Light Brightness:</label>
+            <input type="range" id="brightness" min="0" max="255" value="128" onchange="sendControl()">
+        </div>
+
+        <div class="control-group">
+            <label for="warmness">Main Light Warmness:</label>
+            <input type="range" id="warmness" min="0" max="255" value="128" onchange="sendControl()">
+        </div>
+
+        <div class="control-group">
+            <label for="rgbHue">RGB Ring Hue (0-360&deg;):</label>
+            <input type="range" id="rgbHue" min="0" max="360" value="0" onchange="sendControl()">
+        </div>
+
+        <div class="control-group">
+            <label for="rgbBrightness">RGB Ring Brightness:</label>
+            <input type="range" id="rgbBrightness" min="0" max="255" value="128" onchange="sendControl()">
+        </div>
+
+        <div class="control-group">
+            <label for="fanSpeed">Fan Speed:</label>
+            <select id="fanSpeed" onchange="sendControl()">
+                <option value="0">Off</option>
+                <option value="1">Low</option>
+                <option value="2">Medium</option>
+                <option value="3">High</option>
+            </select>
+        </div>
+
+        <div id="response"></div>
+    </div>
+
+    <script>
+        function sendControl() {
+            var lightMode = document.getElementById("lightMode").value;
+            var brightness = document.getElementById("brightness").value;
+            var warmness = document.getElementById("warmness").value;
+            var rgbHue = document.getElementById("rgbHue").value;
+            var rgbBrightness = document.getElementById("rgbBrightness").value;
+            var fanSpeed = document.getElementById("fanSpeed").value;
+
+            var xhr = new XMLHttpRequest();
+            var url = "/control?" +
+                      "mode=" + lightMode +
+                      "&bright=" + brightness +
+                      "&warm=" + warmness +
+                      "&hue=" + rgbHue +
+                      "&rgbBright=" + rgbBrightness +
+                      "&fan=" + fanSpeed;
+
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function () {
+                var responseDiv = document.getElementById("response");
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200) {
+                        responseDiv.className = "show";
+                        responseDiv.style.backgroundColor = "#d4edda";
+                        responseDiv.style.color = "#155724";
+                        responseDiv.style.borderColor = "#c3e6cb";
+                        responseDiv.innerText = "Status: " + xhr.responseText;
+                    } else {
+                        responseDiv.className = "show";
+                        responseDiv.style.backgroundColor = "#f8d7da";
+                        responseDiv.style.color = "#721c24";
+                        responseDiv.style.borderColor = "#f5c6cb";
+                        responseDiv.innerText = "Error: " + xhr.status + " " + xhr.statusText;
+                    }
+                    setTimeout(() => { responseDiv.className = ""; }, 3000);
+                }
+            };
+            xhr.send();
+        }
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 #include "InputHandler.h"
 
 // --- Global instance pointer for the ISR ---
-InputHandler* globalInputHandler = nullptr;
+HardwareInputHandler* globalInputHandler = nullptr;
 
 // --- ISR Definition ---
 void IRAM_ATTR readEncoderISR() {
@@ -10,7 +10,7 @@ void IRAM_ATTR readEncoderISR() {
   }
 }
 
-InputHandler::InputHandler(LightController* lc, FanController* fc,
+HardwareInputHandler::HardwareInputHandler(LightController* lc, FanController* fc,
                            int clkPin, int dtPin, int swPin, int stepsPerNotch,
                            int fanUpPin, int fanDownPin)
   : lightCtrl(lc), fanCtrl(fc),
@@ -19,7 +19,7 @@ InputHandler::InputHandler(LightController* lc, FanController* fc,
   globalInputHandler = this;
 }
 
-void InputHandler::begin() {
+void HardwareInputHandler::begin() {
   // Initialize pins
   pinMode(fanUpPin, INPUT_PULLUP);
   pinMode(fanDownPin, INPUT_PULLUP);
@@ -30,17 +30,17 @@ void InputHandler::begin() {
   rotaryEncoder.setAcceleration(50);
 }
 
-void InputHandler::update() {
+void HardwareInputHandler::update() {
   pollRotaryEncoder();
   pollEncoderSwitch();
   pollFanButtons();
 }
 
-void InputHandler::handleEncoderISR() {
+void HardwareInputHandler::handleEncoderISR() {
   rotaryEncoder.readEncoder_ISR();
 }
 
-void InputHandler::pollRotaryEncoder() {
+void HardwareInputHandler::pollRotaryEncoder() {
   long newPosition = rotaryEncoder.readEncoder();
   if (newPosition != lastRotaryPosition) {
     Serial.printf("rotary position: %ld (last position: %ld)\n", newPosition, lastRotaryPosition);
@@ -53,7 +53,7 @@ void InputHandler::pollRotaryEncoder() {
   }
 }
 
-void InputHandler::pollEncoderSwitch() {
+void HardwareInputHandler::pollEncoderSwitch() {
   const long debounceDelay = 50;
   const long longPressDelay = 750;
   const long doubleClickDelay = 500;
@@ -123,7 +123,7 @@ void InputHandler::pollEncoderSwitch() {
   delay(10);
 }
 
-void InputHandler::pollFanButtons() {
+void HardwareInputHandler::pollFanButtons() {
   if (digitalRead(fanUpPin) == LOW) {
     if (!fanUpPressed) {
       fanUpPressed = true;

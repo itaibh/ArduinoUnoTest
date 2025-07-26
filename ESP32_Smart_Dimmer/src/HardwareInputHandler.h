@@ -8,9 +8,9 @@
 // ISR function must be in the global scope
 void IRAM_ATTR readEncoderISR();
 
-class InputHandler {
+class HardwareInputHandler {
 public:
-  InputHandler(LightController* lc, FanController* fc,
+  HardwareInputHandler(LightController* lc, FanController* fc,
                int clkPin, int dtPin, int swPin, int stepsPerNotch,
                int fanUpPin, int fanDownPin);
   void begin();

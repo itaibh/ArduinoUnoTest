@@ -1,6 +1,8 @@
 #ifndef BLUETOOTH_MANAGER_H
 #define BLUETOOTH_MANAGER_H
 
+#include <vector>
+#include <string>
 #include <BluetoothSerial.h>
 
 // Define constants for received packet parsing
