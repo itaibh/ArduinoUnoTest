@@ -1,11 +1,12 @@
+#include <cstdint>
 #ifndef LIGHT_CONTROLLER_H
 #define LIGHT_CONTROLLER_H
 
 #include "BluetoothManager.h"
 
-enum LightMode {
-  MAIN_LIGHT,
-  RGB_RING
+enum LightMode : uint8_t {
+  MAIN_LIGHT = 0,
+  RGB_RING = 1
 };
 
 class ILightControllerListener {
@@ -27,6 +28,7 @@ public:
   void switchMode();
   LightMode getMode();
   void registerListener(ILightControllerListener* listener);
+  void setAll(LightMode mode, int mainBrightness, int mainWarmness, int ringBrightness, int ringHue);
 
 private:
   BluetoothManager* btManager;

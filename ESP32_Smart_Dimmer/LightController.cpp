@@ -151,6 +151,18 @@ float LightController::hueToRgb(float p, float q, float t) {
   return p;
 }
 
+void LightController::setAll(LightMode mode, int mainBrightness, int mainWarmness, int ringBrightness, int ringHue) {
+  this->brightnessMain = mainBrightness;
+  this->brightnessRing = ringBrightness;
+  this->warmness = mainWarmness;
+  this->hue = ringHue;
+  this->currentMode = mode;
+  turnOn();
+  sendState();
+  delay(10);  // Send twice for reliability with some devices
+  sendState();
+}
+
 void LightController::registerListener(ILightControllerListener* listener) {
   this->listener = listener;
 }

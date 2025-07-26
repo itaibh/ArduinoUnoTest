@@ -30,6 +30,7 @@ InputHandler inputHandler(
   FAN_SPEED_UP_BTN_PIN,
   FAN_SPEED_DOWN_BTN_PIN);
 StorageHandler storageHandler(
+  &btManager,
   &lightController,
   &fanController);
 
@@ -40,11 +41,6 @@ void setup() {
   // Initialize all components
   btManager.begin();
   inputHandler.begin();
-
-  // Set initial device states
-  lightController.setBrightness(120, true);  // force update
-  lightController.turnOn();
-  fanController.setSpeed(1);
 
   Serial.println("Setup complete.");
 }
