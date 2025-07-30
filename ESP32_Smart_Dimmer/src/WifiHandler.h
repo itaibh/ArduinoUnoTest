@@ -1,6 +1,7 @@
 // WifiHandler.h
 #ifndef WIFI_HANDLER_H
 #define WIFI_HANDLER_H
+#define WOKWI
 
 #include <WiFi.h>
 #include <WiFiManager.h>
