@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "author": "Anonymous maker",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-breadboard-half", "id": "bb2", "top": -223.8, "left": -93.2, "attrs": {} },
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": -182.4,
+      "left": -283.16,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -144.1,
+      "left": 157.1,
+      "rotate": 90,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": -144.1,
+      "left": 99.5,
+      "rotate": 90,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "encoder1",
+      "top": -256.2,
+      "left": -46.7,
+      "rotate": 90,
+      "attrs": {}
+    },
+    { "type": "wokwi-text", "id": "text1", "top": -131, "left": 130, "attrs": { "text": "+" } },
+    { "type": "wokwi-text", "id": "text2", "top": -131, "left": 190, "attrs": { "text": "-" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:GND.2", "bb2:bn.1", "black", [ "h9.6", "v124.8", "h113.6" ] ],
+    [ "esp:3V3", "bb2:bp.1", "red", [ "v-9.6", "h115.35", "v125.7" ] ],
+    [ "bb2:8t.c", "bb2:bn.6", "black", [ "v0" ] ],
+    [ "bb2:9t.c", "bb2:bp.7", "red", [ "v0" ] ],
+    [ "esp:16", "bb2:10t.c", "green", [ "h0" ] ],
+    [ "esp:17", "bb2:11t.c", "limegreen", [ "h0" ] ],
+    [ "esp:18", "bb2:12t.c", "gold", [ "h0" ] ],
+    [ "esp:23", "bb2:29t.a", "magenta", [ "v-38.4", "h384" ] ],
+    [ "bb2:24t.a", "esp:22", "purple", [ "h-288", "v38.4" ] ],
+    [ "btn1:1.l", "bb2:29t.c", "", [ "$bb" ] ],
+    [ "btn1:2.l", "bb2:27t.c", "", [ "$bb" ] ],
+    [ "btn1:1.r", "bb2:29b.h", "", [ "$bb" ] ],
+    [ "btn1:2.r", "bb2:27b.h", "", [ "$bb" ] ],
+    [ "btn2:1.l", "bb2:23t.c", "", [ "$bb" ] ],
+    [ "btn2:2.l", "bb2:21t.c", "", [ "$bb" ] ],
+    [ "btn2:1.r", "bb2:23b.h", "", [ "$bb" ] ],
+    [ "btn2:2.r", "bb2:21b.h", "", [ "$bb" ] ],
+    [ "encoder1:CLK", "bb2:12t.b", "", [ "$bb" ] ],
+    [ "encoder1:DT", "bb2:11t.b", "", [ "$bb" ] ],
+    [ "encoder1:SW", "bb2:10t.b", "", [ "$bb" ] ],
+    [ "encoder1:VCC", "bb2:9t.b", "", [ "$bb" ] ],
+    [ "encoder1:GND", "bb2:8t.b", "", [ "$bb" ] ]
+  ],
+  "dependencies": {}
+}
