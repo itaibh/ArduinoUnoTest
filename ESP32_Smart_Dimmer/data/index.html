@@ -3,11 +3,13 @@
 <head>
     <title>Smart Light Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="/style.css"> </head>
+    <link rel="stylesheet" type="text/css" href="style.css"> </head>
 <body>
     <div class="container">
-        <h1>Smart Light Control (Wi-Fi)</h1>
-
+        <div class="title">
+            <h1>Smart Light Control (Wi-Fi)</h1>
+            <button id="add-device" onclick="openDeviceSelectionDialog()">+</button>
+        </div>
         <div class="control-group">
             <label for="lightMode">Light Mode:</label>
             <select id="lightMode" onchange="sendControl()">
@@ -17,24 +19,28 @@
             </select>
         </div>
 
-        <div class="control-group">
-            <label for="brightness">Main Light Brightness:</label>
-            <input type="range" id="brightness" min="1" max="16" value="16" onchange="sendControl()">
+        <div id="main-light" style="display: none;">
+            <div class="control-group">
+                <label for="brightness">Main Light Brightness:</label>
+                <input type="range" id="brightness" min="1" max="16" value="16" onchange="sendControl()">
+            </div>
+
+            <div class="control-group">
+                <label for="warmness">Main Light Warmness:</label>
+                <input type="range" id="warmness" min="0" max="250" value="200" onchange="sendControl()">
+            </div>
         </div>
 
-        <div class="control-group">
-            <label for="warmness">Main Light Warmness:</label>
-            <input type="range" id="warmness" min="0" max="250" value="200" onchange="sendControl()">
-        </div>
+        <div id="rgb-ring" style="display: none;">
+            <div class="control-group">
+                <label for="rgbHue">RGB Ring Hue (0-360&deg;):</label>
+                <input type="range" id="rgbHue" min="0" max="100" value="0" onchange="sendControl()">
+            </div>
 
-        <div class="control-group">
-            <label for="rgbHue">RGB Ring Hue (0-360&deg;):</label>
-            <input type="range" id="rgbHue" min="0" max="100" value="0" onchange="sendControl()">
-        </div>
-
-        <div class="control-group">
-            <label for="rgbBrightness">RGB Ring Brightness:</label>
-            <input type="range" id="rgbBrightness" min="0" max="255" value="128" onchange="sendControl()">
+            <div class="control-group">
+                <label for="rgbBrightness">RGB Ring Brightness:</label>
+                <input type="range" id="rgbBrightness" min="0" max="255" value="128" onchange="sendControl()">
+            </div>
         </div>
 
         <div class="control-group">
@@ -50,8 +56,37 @@
         <div id="response"></div>
     </div>
 
+    <div id="device-selection-dialog" class="container" style="display: none; position: absolute;">
+        <h1>Select device:</h1>
+        <div class="control-group">
+            <button id="select">Select</button>
+            <button id="cancel" onclick="onDeviceSelectionDialogCancel()">Cancel</button>
+        </div>
+    </div>
     <script>
         function sendControl() {
+            var lightMode = document.getElementById("lightMode").value;
+
+            var mainLightGroup = document.querySelector("div#main-light");
+            var rgbRingGroup = document.querySelector("div#rgb-ring");
+            switch (lightMode) {
+                case "main":
+                    mainLightGroup.style.display="block";
+                    rgbRingGroup.style.display="none";
+                    break;
+                case "rgb":
+                    mainLightGroup.style.display="none";
+                    rgbRingGroup.style.display="block";
+                    break;
+                case "off":
+                    mainLightGroup.style.display="none";
+                    rgbRingGroup.style.display="none";
+                    break;
+            }
+            //sendControlData();
+        }
+
+        function sendControlData() {
             var lightMode = document.getElementById("lightMode").value;
             var brightness = document.getElementById("brightness").value;
             var warmness = document.getElementById("warmness").value;
@@ -90,6 +125,17 @@
             };
             xhr.send();
         }
+
+        var devSelectDiag = document.getElementById("device-selection-dialog");
+
+        function openDeviceSelectionDialog() {
+            devSelectDiag.style.display="block";
+        }
+
+        function onDeviceSelectionDialogCancel() {
+            devSelectDiag.style.display="none";
+        }
+
     </script>
 </body>
 </html>
