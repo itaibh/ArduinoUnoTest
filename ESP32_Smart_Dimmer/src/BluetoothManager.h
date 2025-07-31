@@ -55,7 +55,7 @@ public:
     void sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize);
     void registerConnectionListener(IBluetoothConnectionListener *listener);
     bool waitForAck(const std::vector<CommandType> &expectedAckTypes, unsigned long timeout_ms);
-    std::vector<BtDevice> BluetoothManager::scanForDevices();
+    std::vector<BtDevice> scanForDevices();
 private:
     BluetoothSerial SerialBT;
     BTAddress targetDeviceAddress;
