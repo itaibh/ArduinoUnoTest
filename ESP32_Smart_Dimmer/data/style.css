@@ -338,7 +338,7 @@ select:focus {
 
 .dialog-buttons {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 10px;
     margin-top: 20px; /* Add some space above buttons */
 }
@@ -350,6 +350,7 @@ select:focus {
     font-size: 1em;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    flex: 1;
 }
 
 #search-devices {
