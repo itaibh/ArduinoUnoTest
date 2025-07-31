@@ -1,285 +1,264 @@
-:root {
-    /* Color Palette */
-    --primary-color: #007bff; /* Blue */
-    --secondary-color: #6c757d; /* Grey */
-    --background-color: #f4f7f6; /* Light Grey/Blue */
-    --container-bg: #ffffff; /* White */
-    --text-color: #343a40; /* Dark Grey */
-    --label-color: #495057; /* Medium Grey */
-    --border-color: #ced4da; /* Light Grey Border */
-    --shadow-color: rgba(0, 0, 0, 0.08);
-
-    /* Success/Error Colors */
-    --success-bg: #d4edda;
-    --success-text: #155724;
-    --success-border: #c3e6cb;
-    --error-bg: #f8d7da;
-    --error-text: #721c24;
-    --error-border: #f5c6cb;
-
-    /* Spacing */
-    --spacing-xs: 8px;
-    --spacing-sm: 12px;
-    --spacing-md: 20px;
-    --spacing-lg: 30px;
-}
-
+/* Basic Resets & Body Styling */
 body {
     font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    text-align: center;
     margin: 0;
-    padding: var(--spacing-md);
-    background-color: var(--background-color);
-    color: var(--text-color);
+    padding: 20px;
+    background-color: #f4f7f6; /* Light background */
+    color: #333;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align to top to prevent vertical centering taking too much space */
-    min-height: calc(100vh - (2 * var(--spacing-md))); /* Account for body padding */
-    box-sizing: border-box; /* Include padding in element's total width and height */
+    align-items: flex-start; /* Align to top */
+    min-height: 100vh;
+    box-sizing: border-box; /* Include padding in element's total width/height */
 }
 
+/* Main Container */
 .container {
-    background-color: var(--container-bg);
-    padding: var(--spacing-lg);
-    border-radius: 16px; /* Slightly more rounded */
-    box-shadow: 0 6px 20px var(--shadow-color); /* Softer, larger shadow */
-    max-width: 480px; /* Slightly wider */
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    max-width: 480px; /* Max width for better readability */
     width: 100%;
     box-sizing: border-box;
-    margin-top: var(--spacing-md); /* Consistent top margin */
-    display: flex; /* Use flexbox for internal layout */
-    flex-direction: column; /* Stack children vertically */
-    gap: var(--spacing-md); /* Space between direct children */
 }
 
+/* Title Section */
 .title {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--spacing-sm); /* Space between title and button */
-    margin-bottom: var(--spacing-sm); /* Space below the title group */
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
 }
 
-h1 {
-    color: var(--primary-color); /* Use primary color for main title */
-    margin: 0; /* Remove default h1 margin */
-    font-size: 1.9em; /* Slightly larger */
-    text-align: left;
-    flex-grow: 1; /* Allow title to take available space */
-    white-space: nowrap; /* Prevent wrapping */
-    overflow: hidden; /* Hide overflow */
-    text-overflow: ellipsis; /* Show ellipsis for clipped text */
+.title h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: #2c3e50;
 }
 
-/* Base button styles */
-button {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: 8px; /* More rounded buttons */
-    background-color: #f8f9fa;
-    color: var(--label-color);
-    font-size: 0.95em;
+/* Add Device Button */
+#add-device {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 1.2em;
     cursor: pointer;
-    transition: all 0.2s ease; /* Smooth transitions for hover/active */
-    outline: none; /* Remove default outline */
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-button:hover {
-    background-color: #e2e6ea;
-    border-color: var(--secondary-color);
+#add-device:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
 }
 
-button:active {
-    background-color: #dae0e5;
-    border-color: #5a6268;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle press effect */
+#add-device:active {
+    background-color: #3e8e41;
+    transform: translateY(0);
 }
 
-/* Specific Add Device Button */
-button#add-device {
-    width: 50px;
-    min-width: 50px; /* Ensure it doesn't shrink */
-    height: 50px;
-    font-size: 2.2em; /* Larger plus sign */
-    font-weight: 300; /* Lighter weight for the plus */
-    padding: 0; /* Remove padding for perfect square */
-    background-color: var(--primary-color);
-    color: var(--container-bg); /* White text */
-    border-color: var(--primary-color);
-    border-radius: 50%; /* Circular button */
-    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3); /* Subtle blue shadow */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-button#add-device:hover {
-    background-color: #0069d9;
-    border-color: #0062cc;
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
-}
-
-button#add-device:active {
-    background-color: #0056b3;
-    border-color: #0056b3;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
+/* Control Group Styling */
 .control-group {
-    margin-bottom: var(--spacing-sm); /* More consistent spacing */
-    text-align: left;
-    display: flex; /* Use flexbox for label/input alignment */
-    flex-direction: column; /* Stack label and input */
-    gap: var(--spacing-xs); /* Space between label and input */
+    background-color: #f9f9f9; /* Light background for groups */
+    padding: 18px;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
 }
 
-label {
+.main-group {
+    margin: 20px 0;
+}
+
+.control-group label {
     display: block;
-    margin-bottom: 0; /* Managed by gap in control-group */
-    font-weight: 600; /* Slightly bolder */
-    color: var(--label-color);
-    font-size: 0.95em;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #34495e;
+    font-size: 1.05em;
 }
 
-input[type="range"] {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none; /* Remove default styling */
-    height: 10px; /* Slightly thicker track */
-    border-radius: 5px;
-    background: #e9ecef; /* Lighter background for track */
-    outline: none;
-    opacity: 0.9; /* Subtle opacity */
-    transition: opacity .2s, background .2s;
-}
-
-input[type="range"]:hover {
-    opacity: 1;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-    background: #d3d3d3; /* Fallback */
-    background: linear-gradient(to right, var(--primary-color) var(--fill-percent, 0%), #d3d3d3 var(--fill-percent, 0%)); /* Dynamic fill */
-}
-
-input[type="range"]::-moz-range-track {
-    width: 100%;
-    height: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-    background: #d3d3d3; /* Fallback */
-    background: linear-gradient(to right, var(--primary-color) var(--fill-percent, 0%), #d3d3d3 var(--fill-percent, 0%)); /* Dynamic fill */
-}
-
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 22px; /* Slightly larger thumb */
-    height: 22px;
-    border-radius: 50%;
-    background: var(--primary-color);
-    cursor: pointer;
-    border: 3px solid var(--container-bg); /* Thicker white border */
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); /* More refined shadow */
-    margin-top: -6px; /* Center thumb vertically */
-    transition: background 0.2s, box-shadow 0.2s;
-}
-
-input[type="range"]::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--primary-color);
-    cursor: pointer;
-    border: 3px solid var(--container-bg);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    transition: background 0.2s, box-shadow 0.2s;
-}
-
-input[type="range"]:hover::-webkit-slider-thumb,
-input[type="range"]:active::-webkit-slider-thumb {
-    background: #0056b3; /* Darker blue on hover/active */
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-input[type="range"]:hover::-moz-range-thumb,
-input[type="range"]:active::-moz-range-thumb {
-    background: #0056b3;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-
+/* Select Dropdowns */
 select {
     width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: 8px; /* Match button/container rounding */
-    border: 1px solid var(--border-color);
-    background-color: #f8f9fa;
-    color: var(--text-color);
-    font-size: 0.95em;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%236c757d" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Grey arrow */
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 1em;
+    color: #555;
+    -webkit-appearance: none; /* Remove default arrow on WebKit */
+    -moz-appearance: none;    /* Remove default arrow on Mozilla */
+    appearance: none;         /* Remove default arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2C197.973L146.2%2C57.173L5.4%2C197.973L25.973%2C218.547L146.2%2C97.973L266.427%2C218.547L287%2C197.973Z%22%2F%3E%3C%2Fsvg%3E');
     background-repeat: no-repeat;
-    background-position: right var(--spacing-sm) center;
-    background-size: 20px; /* Slightly smaller arrow */
+    background-position: right 10px center;
+    background-size: 12px;
     cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
-}
-
-select:hover {
-    border-color: var(--primary-color);
-    background-color: #e9ecef;
+    transition: border-color 0.3s ease;
 }
 
 select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
     outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+/* Stepper Controls (for reference, though you removed them for now) */
+.stepper-control .stepper-input-group {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center horizontally */
+}
+
+.stepper-control .stepper-input-group input[type="number"] {
+    flex-grow: 1; /* Allow input to take available space */
+    max-width: 80px; /* Limit input width */
+    text-align: center;
+    margin: 0 10px;
+    padding: 8px 5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1.1em;
+    -moz-appearance: textfield; /* Remove spinner buttons on Firefox */
+}
+/* Hide default number input arrows on Chrome/Safari/Edge */
+.stepper-control .stepper-input-group input[type="number"]::-webkit-outer-spin-button,
+.stepper-control .stepper-input-group input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.stepper-control .stepper-input-group button {
+    background-color: #3498db; /* Blue */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Circular buttons */
+    width: 38px;
+    height: 38px;
+    font-size: 1.4em;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.stepper-control .stepper-input-group button:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+.stepper-control .stepper-input-group button:active {
+    background-color: #216a9a;
+    transform: translateY(0);
 }
 
 
-#response {
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid;
+/* --- Common Picker Container Styles --- */
+#warmness-container,
+#hue-wheel-container {
+    position: relative;
+    margin: 0 auto; /* Center the picker */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    /* Ensure the picker images are fully visible */
+    display: block; /* To apply margin auto correctly */
+    box-sizing: border-box; /* For padding/border inclusion */
+}
+
+/* Specific dimensions and shape for RGB picker */
+#hue-wheel-container {
+    width: 100%;
+    border-radius: 50%; /* Make circular */
+}
+
+/* Specific dimensions and shape for Warmness/Intensity picker */
+#warmness-container {
+    width: 100%;
+    border-radius: 10px; /* Slightly rounded corners for rectangle */
+}
+
+
+/* --- Image within Picker Container --- */
+#color-picker-image,
+#warmness-picker-image {
+    display: block; /* Remove extra space below image */
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures image covers container without distortion */
+    user-select: none; /* Prevent selection of the image */
+    -webkit-user-drag: none; /* Prevent dragging of the image */
+}
+
+/* Ensure circular clipping for the RGB picker image */
+#color-picker-image {
+    border-radius: 50%;
+}
+
+
+/* --- Pointer Styles (Common) --- */
+#hue-pointer,
+#warmness-pointer {
+    position: absolute;
+    width: 24px; /* Size of the pointer */
+    height: 24px;
+    border-radius: 50%; /* Make pointer circular */
+    border: 3px solid white; /* White outline */
+    box-shadow: 0 0 8px rgba(0,0,0,0.6); /* Stronger shadow for visibility */
+    background-color: rgba(0,0,0,0.5); /* Default color, will be updated by JS */
+    transform: translate(-50%, -50%); /* Center the pointer div itself */
+    pointer-events: none; /* Pointer itself doesn't block clicks/touches on the image */
+    transition: background-color 0.1s ease, transform 0.1s ease; /* Smooth transitions */
+    z-index: 2; /* Ensure pointer is on top of image */
+}
+
+/* --- Response Message --- */
+.response-message {
+    padding: 12px;
     border-radius: 8px;
-    font-size: 0.9em;
-    display: none;
-    text-align: left;
-}
-#response.show {
-    display: block;
-}
-#response.success {
-    background-color: var(--success-bg);
-    color: var(--success-text);
-    border-color: var(--success-border);
-}
-#response.error {
-    background-color: var(--error-bg);
-    color: var(--error-text);
-    border-color: var(--error-border);
+    margin-top: 25px;
+    font-weight: 500;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* --- Modal / Device Selection Dialog --- */
+.response-message.show {
+    opacity: 1;
+    transform: translateY(0);
+}
 
+.response-message.success {
+    background-color: #e6ffee;
+    color: #27ae60;
+    border: 1px solid #2ecc71;
+}
+
+.response-message.error {
+    background-color: #ffe6e6;
+    color: #e74c3c;
+    border: 1px solid #c0392b;
+}
+
+/* --- Modal Overlay (Device Selection Dialog) --- */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Ensure it's on top */
+    z-index: 1000; /* High z-index to cover everything */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -291,147 +270,102 @@ select:focus {
 }
 
 #device-selection-dialog {
-    /* Inherits container styles for appearance */
-    max-width: 480px; /* Max width same as main container */
-    margin: 0; /* Override container's margin-top for centering */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25); /* Stronger shadow for modal */
-    transform: translateY(-20px); /* Initial position slightly up */
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    width: 90%;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
 }
 
 .modal-overlay.show #device-selection-dialog {
-    transform: translateY(0); /* Slide down into place */
-    opacity: 1;
+    transform: translateY(0);
 }
 
 #device-selection-dialog h1 {
-    color: var(--text-color); /* Modal title is dark grey */
-    font-size: 1.6em; /* Slightly smaller than main title */
-    margin-bottom: var(--spacing-md);
+    font-size: 1.5em;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #34495e;
     text-align: center;
-    overflow: visible; /* Don't clip modal title */
-    white-space: normal;
-    flex-grow: unset;
+}
+
+.search-indicator {
+    text-align: center;
+    margin-bottom: 15px;
+    font-style: italic;
+    color: #666;
+    font-size: 0.95em;
+}
+
+.search-indicator span {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+#device-list-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    background-color: #fcfcfc;
+}
+
+.device-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.device-item:hover {
+    background-color: #eef;
+}
+
+.device-item:last-child {
+    border-bottom: none;
 }
 
 .dialog-buttons {
     display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px; /* Add some space above buttons */
 }
 
 .dialog-buttons button {
-    min-width: 90px; /* Give dialog buttons a minimum width */
-}
-
-/* Primary/Accent button for 'Select' or 'Search' actions within dialog */
-.dialog-buttons button#select,
-.dialog-buttons button#search-devices {
-    background-color: var(--primary-color);
-    color: var(--container-bg);
-    border-color: var(--primary-color);
-}
-.dialog-buttons button#select:hover,
-.dialog-buttons button#search-devices:hover {
-    background-color: #0069d9;
-    border-color: #0062cc;
-}
-.dialog-buttons button#select:active,
-.dialog-buttons button#search-devices:active {
-    background-color: #0056b3;
-    border-color: #0056b3;
-}
-
-
-/* Device List Styling within Dialog */
-#device-list-container {
-    max-height: 200px; /* Scrollable area for device list */
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
+    padding: 10px 18px;
+    border: none;
     border-radius: 8px;
-    padding: var(--spacing-sm);
-    background-color: #fdfefe; /* Slightly off-white background */
-    flex-grow: 1; /* Allow it to fill space */
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-.device-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-bottom: 1px solid #eee;
-    font-size: 0.9em;
-    color: var(--label-color);
-}
-.device-item:last-child {
-    border-bottom: none; /* No border on the last item */
-}
-.device-item-name {
-    font-weight: 600;
-    color: var(--text-color);
-}
-.device-item-address {
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-    font-size: 0.8em;
-    color: var(--secondary-color);
-}
-.device-item-select-btn {
-    padding: 4px 8px;
-    font-size: 0.8em;
-    border-radius: 5px;
-    background-color: var(--primary-color);
-    color: var(--container-bg);
-    border-color: var(--primary-color);
-}
-.device-item-select-btn:hover {
-    background-color: #0069d9;
-    border-color: #0062cc;
+#search-devices {
+    background-color: #3498db; /* Blue */
+    color: white;
 }
 
-/* Search Indicator */
-.search-indicator {
-    text-align: center;
-    margin-bottom: var(--spacing-sm);
-    font-size: 0.9em;
-    color: var(--secondary-color);
-    display: none; /* Hidden by default, shown by JS */
-}
-.search-indicator.show {
-    display: block;
-}
-.search-indicator span {
-    display: inline-block;
-    animation: pulse 1.5s infinite ease-in-out;
-}
-@keyframes pulse {
-    0% { transform: scale(0.8); opacity: 0.5; }
-    50% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(0.8); opacity: 0.5; }
+#search-devices:hover {
+    background-color: #2980b9;
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
-    body {
-        padding: var(--spacing-sm);
-    }
-    .container {
-        padding: var(--spacing-md);
-        margin-top: var(--spacing-sm);
-    }
-    h1 {
-        font-size: 1.6em;
-    }
-    button#add-device {
-        width: 45px;
-        height: 45px;
-        font-size: 2em;
-    }
-    .dialog-buttons {
-        flex-direction: column; /* Stack buttons on small screens */
-    }
-    .dialog-buttons button {
-        width: 100%;
-    }
+#cancel-device-selection {
+    background-color: #bdc3c7; /* Gray */
+    color: #333;
+}
+
+#cancel-device-selection:hover {
+    background-color: #95a5a6;
 }

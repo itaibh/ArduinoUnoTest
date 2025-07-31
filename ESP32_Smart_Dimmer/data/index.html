@@ -21,27 +21,25 @@
             </select>
         </div>
 
-        <div id="main-light" style="display: none;">
-            <div class="control-group">
-                <label for="brightness">Main Light Brightness:</label>
-                <input type="range" id="brightness" min="1" max="16" value="16">
-            </div>
-
-            <div class="control-group">
-                <label for="warmness">Main Light Warmness:</label>
-                <input type="range" id="warmness" min="0" max="250" value="200">
+        <div id="main-light" style="display: none;" class="main-group">
+            <div class="control-group" id="warmness-picker-group">
+                <div id="warmness-container">
+                    <img id="warmness-picker-image" src="warmness-selection.png" alt="Color Picker Wheel" width="100%">
+                    <div id="warmness-pointer"></div>
+                    <input type="hidden" id="intensityValue" value="128" min="1" max="16">
+                    <input type="hidden" id="warmnessValue" value="128" min="0" max="255">
+                </div>
             </div>
         </div>
 
-        <div id="rgb-ring" style="display: none;">
-            <div class="control-group">
-                <label for="rgbHue">RGB Ring Hue (0-360&deg;):</label>
-                <input type="range" id="rgbHue" min="0" max="100" value="0">
-            </div>
-
-            <div class="control-group">
-                <label for="rgbBrightness">RGB Ring Brightness:</label>
-                <input type="range" id="rgbBrightness" min="0" max="255" value="128">
+        <div id="rgb-ring" style="display: none;" class="main-group">
+            <div class="control-group" id="rgb-picker-group">
+                <div id="hue-wheel-container">
+                    <img id="color-picker-image" src="color-wheel.png" alt="Color Picker Wheel" width="100%">
+                    <div id="hue-pointer"></div>
+                    <input type="hidden" id="rgbHue" value="0" min="0" max="100">
+                    <input type="hidden" id="rgbValue" value="128" min="0" max="255">
+                </div>
             </div>
         </div>
 
