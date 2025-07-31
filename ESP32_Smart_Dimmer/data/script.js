@@ -55,7 +55,10 @@ function sendControlData() {
 
     const fanSpeed = getById("fanSpeed").value;
     url += `&fan=${fanSpeed}`;
+    performGet(url);
+}
 
+function performGet(url, callback) {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
     xhr.onreadystatechange = function () {
@@ -63,7 +66,11 @@ function sendControlData() {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
                 responseDiv.className = "show success";
-                responseDiv.innerText = "Status: " + xhr.responseText;
+                if (callback) {
+                    callback(xhr.responseText);
+                } else {
+                    responseDiv.innerText = "Status: " + xhr.responseText;
+                }
             } else {
                 responseDiv.className = "show error";
                 responseDiv.innerText = "Error: " + xhr.status + " " + xhr.statusText;
@@ -72,7 +79,7 @@ function sendControlData() {
         }
     };
     // Uncomment this line when ready to send actual data to your ESP32
-    // xhr.send(); // Sending actual data now
+    xhr.send(); // Sending actual data now
     console.log("Sending control data:", url);
 }
 
@@ -88,6 +95,45 @@ function closeDeviceSelectionDialog() {
     deviceSelectionOverlay.classList.remove("show");
 }
 
+const deviceListContainer = getById("device-list-container");
+function searchForDevices() {
+    let url = "/discover_devices";
+
+    performGet(url, (responseText => {
+        try {
+            const devices = JSON.parse(responseText);
+            displayDiscoveredDevices(devices);
+        } catch (e) {
+            // Handle JSON parsing errors specifically
+            deviceListContainer.innerHTML = '<div class="error-message">Error parsing device data.</div>';
+            console.error("Error parsing JSON response:", e);
+        }
+    }));
+}
+
+function displayDiscoveredDevices(devices) {
+    deviceListContainer.innerHTML = ''; // Clear previous content
+
+    if (devices.length === 0) {
+        deviceListContainer.innerHTML = '<div class="info-message">No devices found.</div>';
+        return;
+    }
+
+    devices.forEach(device => {
+        const deviceItem = document.createElement('div');
+        deviceItem.className = 'device-item';
+        deviceItem.innerHTML = `
+            <strong>${device.name}</strong> (${device.type})<br>
+            <small>ID: ${device.id} | IP: ${device.ipAddress}</small>
+        `;
+        deviceItem.addEventListener('click', () => {
+            alert(`Selected device: ${device.name} (IP: ${device.ipAddress})`);
+            // Store selected device info or update main UI here
+            closeDeviceSelectionDialog();
+        });
+        deviceListContainer.appendChild(deviceItem);
+    });
+}
 // --- HSL/RGB Color Conversion Helpers (Needed for both pickers) ---
 
 /**
@@ -431,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach listener for add device button
     getById('add-device').addEventListener('click', openDeviceSelectionDialog);
-
+    getById('search-devices').addEventListener('click', searchForDevices)
     // Attach listener for modal cancel button
     getById('cancel-device-selection').addEventListener('click', closeDeviceSelectionDialog);
     deviceSelectionOverlay.addEventListener('click', (e) => {
