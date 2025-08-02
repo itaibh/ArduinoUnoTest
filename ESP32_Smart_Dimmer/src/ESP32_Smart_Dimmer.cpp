@@ -40,6 +40,7 @@ StorageHandler storageHandler(
     &fanController);
 WifiHandler wifiHandler;
 // WebServerModule webServer(
+//   &btManager,
 //   &lightController,
 //   &fanController);
 
@@ -96,7 +97,7 @@ void setup()
     }
     else
     {
-        WebServerModule* webServer = new WebServerModule(&lightController, &fanController);
+        WebServerModule* webServer = new WebServerModule(&btManager, &lightController, &fanController);
         if (!webServer)
         { // Always check for failed allocation
             Serial.println("FATAL: Failed to allocate WebServerModule!");

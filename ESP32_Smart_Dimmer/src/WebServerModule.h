@@ -10,7 +10,7 @@
 class WebServerModule {
 public:
     /** Constructor */
-    WebServerModule(LightController* lc, FanController* fc);
+    WebServerModule(BluetoothManager* bt, LightController* lc, FanController* fc);
     
     /**
      * @brief Initializes and starts the web server.
@@ -26,12 +26,14 @@ public:
 
 private:
     WebServer _server; // Private instance of the WebServer
+    BluetoothManager* btManager;
     LightController* lightCtrl;
     FanController* fanCtrl;
 
     // Private helper methods
     void handleRoot();
     void handleControl();
+    void handleFindDevices();
     void handleNotFound();
     String getContentType(String filename);
 };

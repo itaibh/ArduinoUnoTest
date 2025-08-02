@@ -69,7 +69,7 @@ function performGet(url, callback) {
                 if (callback) {
                     callback(xhr.responseText);
                 } else {
-                    responseDiv.innerText = "Status: " + xhr.responseText;
+                    // responseDiv.innerText = "Status: " + xhr.responseText;
                 }
             } else {
                 responseDiv.className = "show error";
