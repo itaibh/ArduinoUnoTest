@@ -5,26 +5,6 @@
 const unsigned long DEBOUNCE_DELAY_MS = 2000;    // Wait 2 seconds of inactivity before saving a connected device
 const unsigned long MIN_SAVE_INTERVAL_MS = 1000; // Minimum 1 second between actual writes (if tryStore triggers)
 
-// --- LightMode Conversion Helpers ---
-// Assuming LightMode is an enum, or enum class, defined where accessible
-String lightModeToString(LightMode mode)
-{
-    if (mode == LightMode::MAIN_LIGHT)
-        return "main";
-    if (mode == LightMode::RGB_RING)
-        return "rgb";
-    return "unknown";
-}
-
-LightMode stringToLightMode(const String &modeStr)
-{
-    if (modeStr == "main")
-        return LightMode::MAIN_LIGHT;
-    if (modeStr == "rgb")
-        return LightMode::RGB_RING;
-    return LightMode::MAIN_LIGHT; // Default to MAIN_LIGHT if unrecognized
-}
-
 // --- StorageHandler Constructor ---
 StorageHandler::StorageHandler(BluetoothManager *bt, LightController *lc, FanController *fc)
     : btManager(bt), lightCtrl(lc), fanCtrl(fc), lastSaveTime(0), lastChangeDetectedTime(0)

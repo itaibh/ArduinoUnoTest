@@ -269,14 +269,14 @@ bool BluetoothManager::waitForAck(const std::vector<CommandType> &expectedAckTyp
     return false;                                                                                           // Timeout or incorrect ACK type received
 }
 
-std::vector<BtDevice> BluetoothManager::scanForDevices()
+std::map<String, BtDevice> BluetoothManager::scanForDevices()
 {
     Serial.println("------------------------------------");
     Serial.println("Scanning for devices (10 seconds)...");
 
     BTScanResults *scanResults = SerialBT.discover(10000);
 
-    std::vector<BtDevice> foundDevices;
+    std::map<String, BtDevice> foundDevices;
     if (scanResults != nullptr && scanResults->getCount() > 0)
     {
         Serial.printf("Found %d devices:\n", scanResults->getCount());
@@ -287,7 +287,7 @@ std::vector<BtDevice> BluetoothManager::scanForDevices()
             BTAddress address = device_result->getAddress();
             Serial.printf("  - Found Device: %s, Address: %s\n", name.c_str(), address.toString().c_str());
             if (address.toString().startsWith("C9:A3:05")) {
-                foundDevices.push_back({name, address.toString()});
+                foundDevices[address.toString()] = {name, address.toString()};
             }
         }
     }

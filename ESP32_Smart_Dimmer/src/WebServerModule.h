@@ -6,11 +6,12 @@
 #include <SPIFFS.h>
 #include "LightController.h"
 #include "FanController.h"
+#include "StorageHandler.h"
 
 class WebServerModule {
 public:
     /** Constructor */
-    WebServerModule(BluetoothManager* bt, LightController* lc, FanController* fc);
+    WebServerModule(StorageHandler* sh, BluetoothManager* bt, LightController* lc, FanController* fc);
     
     /**
      * @brief Initializes and starts the web server.
@@ -26,6 +27,7 @@ public:
 
 private:
     WebServer _server; // Private instance of the WebServer
+    StorageHandler* storageHandler;
     BluetoothManager* btManager;
     LightController* lightCtrl;
     FanController* fanCtrl;
@@ -34,6 +36,7 @@ private:
     void handleRoot();
     void handleControl();
     void handleFindDevices();
+    void handleGetAllDevices();
     void handleNotFound();
     String getContentType(String filename);
 };

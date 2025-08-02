@@ -2,6 +2,8 @@
 #define UTILS_H
 
 #include <string>
+#include "LightMode.h"
+
 // --- HELPER FUNCTION: Escapes a string for JSON output ---
 // This is crucial to ensure valid JSON if your strings contain quotes or backslashes.
 // For full JSON compatibility, you might need to escape more characters (e.g., newlines, tabs)
@@ -34,5 +36,27 @@ String escapeJsonString(const String &input)
     }
     return escapedString;
 }
+
+
+// --- LightMode Conversion Helpers ---
+// Assuming LightMode is an enum, or enum class, defined where accessible
+String lightModeToString(LightMode mode)
+{
+    if (mode == LightMode::MAIN_LIGHT)
+        return "main";
+    if (mode == LightMode::RGB_RING)
+        return "rgb";
+    return "unknown";
+}
+
+LightMode stringToLightMode(const String &modeStr)
+{
+    if (modeStr == "main")
+        return LightMode::MAIN_LIGHT;
+    if (modeStr == "rgb")
+        return LightMode::RGB_RING;
+    return LightMode::MAIN_LIGHT; // Default to MAIN_LIGHT if unrecognized
+}
+
 
 #endif

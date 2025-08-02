@@ -2,6 +2,7 @@
 #define BLUETOOTH_MANAGER_H
 
 #include <vector>
+#include <map>
 #include <string>
 #include <BluetoothSerial.h>
 
@@ -55,7 +56,7 @@ public:
     void sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize);
     void registerConnectionListener(IBluetoothConnectionListener *listener);
     bool waitForAck(const std::vector<CommandType> &expectedAckTypes, unsigned long timeout_ms);
-    std::vector<BtDevice> scanForDevices();
+    std::map<String, BtDevice> scanForDevices();
 private:
     BluetoothSerial SerialBT;
     BTAddress targetDeviceAddress;

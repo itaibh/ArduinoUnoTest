@@ -7,8 +7,8 @@
 // call methods on that instance. For now, we assume global access via externs.
 
 // Constructor - initializes the WebServer on port 80
-WebServerModule::WebServerModule(BluetoothManager *bt, LightController *lc, FanController *fc)
-    : _server(80), btManager(bt), lightCtrl(lc), fanCtrl(fc) {}
+WebServerModule::WebServerModule(StorageHandler* sh, BluetoothManager *bt, LightController *lc, FanController *fc)
+    : _server(80), storageHandler(sh), btManager(bt), lightCtrl(lc), fanCtrl(fc) {}
 
 bool WebServerModule::begin()
 {
@@ -74,12 +74,6 @@ void WebServerModule::handleControl()
     Serial.println(fanSpeed);
 
     // Call your existing stub methods
-    // setLightMode(mode);
-    // setBrightness(brightness);
-    // setWarmness(warmness);
-    // setRgbHue(rgbHue);
-    // setRgbBrightness(rgbBrightness);
-    // setFanSpeed(fanSpeed);
     if (mode == "off")
     {
         lightCtrl->turnOff();
@@ -96,33 +90,71 @@ void WebServerModule::handleControl()
 
 void WebServerModule::handleFindDevices()
 {
-    std::vector<BtDevice> devices = btManager->scanForDevices();
+    std::map<String, BtDevice> devices = btManager->scanForDevices();
 
-    // --- MANUALLY BUILD JSON STRING ---
-    String jsonResponse = "["; // Start of JSON array
+    String jsonResponse = "[";
+    bool firstDevice = true;
+    for (auto const &pair : devices)
+    { // Use 'pair' for C++11 compatibility
+        const String &mac = pair.first;
+        const BtDevice &config = pair.second;
 
-    for (size_t i = 0; i < devices.size(); ++i)
-    {
-        const auto &device = devices[i];
-
-        jsonResponse += "{"; // Start of object for each device
-        jsonResponse += "\"name\":\"" + escapeJsonString(device.name) + "\",";
-        jsonResponse += "\"address\":\"" + escapeJsonString(device.address);
-        jsonResponse += "}"; // End of object
-
-        if (i < devices.size() - 1)
+        if (!firstDevice)
         {
-            jsonResponse += ","; // Add comma if it's not the last device
+            jsonResponse += ",";
         }
+        firstDevice = false;
+
+        jsonResponse += "{";
+        jsonResponse += "\"address\":\"" + config.address + "\",";
+        jsonResponse += "\"name\":" + config.name;
+        jsonResponse += "}";
     }
+    jsonResponse += "]";
 
-    jsonResponse += "]"; // End of JSON array
-    // --- END MANUAL JSON BUILDING ---
+    Serial.printf("Sent /discover_devices response (Manual JSON): %s\n", jsonResponse.c_str());
+    _server.sendHeader("Access-Control-Allow-Origin", "*"); // IMPORTANT: Enable CORS
+    _server.send(200, "application/json", jsonResponse);
+}
 
-    Serial.print("Generated JSON: ");
-    Serial.println(jsonResponse);
+void WebServerModule::handleGetAllDevices()
+{
+    // std::map<String, BtDevice> devices = btManager->scanForDevices();
+    std::map<String, DeviceConfig> devices = storageHandler->getAllManagedDevices();
 
-    // Send the JSON response
+    String jsonResponse = "[";
+    bool firstDevice = true;
+    for (auto const &pair : devices)
+    { // Use 'pair' for C++11 compatibility
+        const String &mac = pair.first;
+        const DeviceConfig &config = pair.second;
+
+        if (!firstDevice)
+        {
+            jsonResponse += ",";
+        }
+        firstDevice = false;
+
+        jsonResponse += "{";
+        jsonResponse += "\"mac_address\":\"" + config.mac_address + "\",";
+        jsonResponse += "\"fan_speed\":" + String(config.fan_speed) + ",";
+        jsonResponse += "\"light_mode\":\"" + lightModeToString(config.light_mode) + "\",";
+        jsonResponse += "\"main_brightness\":" + String(config.main_brightness) + ",";
+        jsonResponse += "\"main_warmness\":" + String(config.main_warmness) + ",";
+        jsonResponse += "\"ring_hue\":" + String(config.ring_hue) + ",";
+        jsonResponse += "\"ring_brightness\":" + String(config.ring_brightness) + ",";
+        jsonResponse += "\"is_on\":";
+        jsonResponse += (config.isOn ? "true" : "false"); // Convert bool to "true" or "false"
+
+        // Optional: Add connected status if currentConnectedMac is accessible
+        // bool isConnected = (mac == storageHandler.currentConnectedMac);
+        // jsonResponse += ",\"connected\":" + (isConnected ? "true" : "false");
+
+        jsonResponse += "}";
+    }
+    jsonResponse += "]";
+
+    Serial.printf("Sent /discover_devices response (Manual JSON): %s\n", jsonResponse.c_str());
     _server.sendHeader("Access-Control-Allow-Origin", "*"); // IMPORTANT: Enable CORS
     _server.send(200, "application/json", jsonResponse);
 }

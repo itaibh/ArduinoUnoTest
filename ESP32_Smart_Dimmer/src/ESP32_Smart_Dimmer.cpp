@@ -86,6 +86,8 @@ void setup()
     Serial.begin(115200);
     Serial.println("ESP32 Smart Dimmer Prototype Starting...");
 
+    storageHandler.loadAllDeviceConfigs();
+
     // 1. Connect to WiFi or start configuration portal
     Serial.println("Attempting WiFi connection or starting AP for configuration...");
     if (!wifiHandler.connect())
@@ -97,22 +99,27 @@ void setup()
     }
     else
     {
-        WebServerModule* webServer = new WebServerModule(&btManager, &lightController, &fanController);
+        WebServerModule *webServer = new WebServerModule(
+            &storageHandler,
+            &btManager,
+            &lightController,
+            &fanController);
+
         if (!webServer)
         { // Always check for failed allocation
             Serial.println("FATAL: Failed to allocate WebServerModule!");
             while (true); // Halt
         }
-     
+
         // WiFi is connected in STA mode
         Serial.println("WiFi connected. Starting Web Server...");
         if (!webServer->begin())
         {
-          Serial.println("Web server failed to start.");
+            Serial.println("Web server failed to start.");
         }
         else
         {
-        //   listSpiffsFiles();
+            //   listSpiffsFiles();
         }
     }
     delay(100); // Give it some time
