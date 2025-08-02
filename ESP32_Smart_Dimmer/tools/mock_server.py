@@ -12,22 +12,16 @@ CONTROL_PATH_PREFIX = "/control?"
 # Simulated device data
 mock_devices = [
     {
-        "id": "light_living_room_1",
-        "name": "Living Room Light",
-        "ipAddress": "192.168.1.100", # Dummy IP for simulation
-        "type": "Smart Light"
+        "name": "Living Room",
+        "address": "AA:BB:CC:DD:EE:FF",
     },
     {
-        "id": "light_kitchen_ring_1",
-        "name": "Kitchen RGB Ring",
-        "ipAddress": "192.168.1.101",
-        "type": "Smart Light"
+        "name": "Bedroom",
+        "address": "A1:B2:C3:D4:E5:F6",
     },
     {
-        "id": "fan_bedroom_1",
-        "name": "Bedroom Fan",
-        "ipAddress": "192.168.1.102",
-        "type": "Smart Fan"
+        "name": "Work Room",
+        "address": "11:22:33:44:55:66",
     }
 ]
 

@@ -123,11 +123,11 @@ function displayDiscoveredDevices(devices) {
         const deviceItem = document.createElement('div');
         deviceItem.className = 'device-item';
         deviceItem.innerHTML = `
-            <strong>${device.name}</strong> (${device.type})<br>
-            <small>ID: ${device.id} | IP: ${device.ipAddress}</small>
+            <strong>${device.name}</strong><br>
+            <small>${device.address}</small>
         `;
         deviceItem.addEventListener('click', () => {
-            alert(`Selected device: ${device.name} (IP: ${device.ipAddress})`);
+            alert(`Selected device: ${device.name} (MAC: ${device.address})`);
             // Store selected device info or update main UI here
             closeDeviceSelectionDialog();
         });
