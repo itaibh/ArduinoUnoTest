@@ -114,7 +114,8 @@ function searchForDevices() {
 const mainPage = getById("main");
 const registeredDevicesDiv = getById("registered-devices");
 const noDevicesSpan = getById("no-devices");
-
+const deviceControlDiv = getById("device-control");
+const currentDeviceTitleHeader = deviceControlDiv.querySelector(".title > h1");
 function reloadMainPage() {
     // Clear previous content to avoid duplicates on reload
     registeredDevicesDiv.innerHTML = "";
@@ -149,34 +150,34 @@ function reloadMainPage() {
                 const statusClass = device.is_on ? "status-on" : "status-off";
 
                 deviceElement.innerHTML = `
-                    <h3>${device.name || "Unnamed Device"}</h3>
-                    <p>MAC: ${device.mac_address}</p>
-                    <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
+                    <div class="data">
+                        <h3>${device.name || "Unnamed Device"}</h3>
+                        <p>MAC: ${device.mac_address}</p>
+                        <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
+                    </div>
                     <div class="device-actions">
-                        <button class="control-device-btn" data-mac="${device.mac_address}">Control</button>
+                        <!-- <button class="control-device-btn" data-mac="${device.mac_address}">Control</button> -->
                         <button class="remove-device-btn" data-mac="${device.mac_address}">Remove</button>
                     </div>
                 `;
+                deviceElement.dataset.mac = device.mac_address;
+                deviceElement.dataset.name = device.name;
                 registeredDevicesDiv.appendChild(deviceElement);
 
-                // --- Event Listeners for new buttons ---
-                // Example: Control button click (you'll implement the actual control UI later)
-                deviceElement.querySelector(".control-device-btn").addEventListener("click", (e) => {
+                deviceElement.querySelector(".data").addEventListener("click", (e) => {
                     const mac = e.target.dataset.mac;
-                    console.log(`Control button clicked for MAC: ${mac}`);
-                    alert(`Simulating control panel for ${mac}.\n(You will implement the actual device control UI here.)`);
-                    // TODO: Here you would typically transition to a detailed control panel
-                    // or open a modal for this specific device.
+                    const name = e.target.dataset.name;
+                    console.log(`Control button clicked for MAC: ${mac} (${name})`);
+                    deviceControlDiv.style.display = "block";
+                    currentDeviceTitleHeader.innerHTML = name;
+                    mainPage.style.display = "none";
                 });
 
-                // Example: Remove button click (you'll need a backend endpoint for this)
                 deviceElement.querySelector(".remove-device-btn").addEventListener("click", (e) => {
                     const mac = e.target.dataset.mac;
                     console.log(`Remove button clicked for MAC: ${mac}`);
                     if (confirm(`Are you sure you want to remove device ${mac}?`)) {
-                        alert(`Simulating device removal for ${mac}.\n(You will implement a backend /remove_device endpoint.)`);
-                        // TODO: Implement actual backend call to /remove_device?mac=<mac_address>
-                        // After successful removal, call reloadMainPage() again
+                        performGet(`/remove_device?address=${mac}`, () => reloadMainPage())
                     }
                 });
             });

@@ -195,7 +195,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
 
             address = params.get('address', [None])[0]
             if address and address in registered_devices:
-                registered_devices.remove(address)
+                del registered_devices[address]
             self.wfile.write(b"OK")
         else:
             # For all other GET requests, serve static files from the WEB_ROOT_DIR ('data' folder)
@@ -205,6 +205,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
 # Create the server
 Handler = CustomHandler
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    httpd.allow_reuse_address = True
     print(f"Serving mock device server from '{SCRIPT_DIR}' at port {PORT}")
     print(f"Serving web assets from '{WEB_ROOT_DIR}'")
     print(f"Access device discovery at http://localhost:{PORT}{DEVICE_DISCOVERY_PATH}")
