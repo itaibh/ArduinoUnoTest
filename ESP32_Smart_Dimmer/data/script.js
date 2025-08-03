@@ -150,7 +150,7 @@ function reloadMainPage() {
                 const statusClass = device.is_on ? "status-on" : "status-off";
 
                 deviceElement.innerHTML = `
-                    <div class="data">
+                    <div class="data" data-mac="${device.mac_address} data-name="${device.name}">
                         <h3>${device.name || "Unnamed Device"}</h3>
                         <p>MAC: ${device.mac_address}</p>
                         <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
@@ -160,8 +160,6 @@ function reloadMainPage() {
                         <button class="remove-device-btn" data-mac="${device.mac_address}">Remove</button>
                     </div>
                 `;
-                deviceElement.dataset.mac = device.mac_address;
-                deviceElement.dataset.name = device.name;
                 registeredDevicesDiv.appendChild(deviceElement);
 
                 deviceElement.querySelector(".data").addEventListener("click", (e) => {
