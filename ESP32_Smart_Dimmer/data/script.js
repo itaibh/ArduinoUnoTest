@@ -150,7 +150,7 @@ function reloadMainPage() {
                 const statusClass = device.is_on ? "status-on" : "status-off";
 
                 deviceElement.innerHTML = `
-                    <div class="data" data-mac="${device.mac_address} data-name="${device.name}">
+                    <div class="data" data-mac="${device.mac_address}" data-name="${device.name}">
                         <h3>${device.name || "Unnamed Device"}</h3>
                         <p>MAC: ${device.mac_address}</p>
                         <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
@@ -163,8 +163,8 @@ function reloadMainPage() {
                 registeredDevicesDiv.appendChild(deviceElement);
 
                 deviceElement.querySelector(".data").addEventListener("click", (e) => {
-                    const mac = e.target.dataset.mac;
-                    const name = e.target.dataset.name;
+                    const mac = e.currentTarget.dataset.mac;
+                    const name = e.currentTarget.dataset.name;
                     console.log(`Control button clicked for MAC: ${mac} (${name})`);
                     deviceControlDiv.style.display = "block";
                     currentDeviceTitleHeader.innerHTML = name;
@@ -172,7 +172,7 @@ function reloadMainPage() {
                 });
 
                 deviceElement.querySelector(".remove-device-btn").addEventListener("click", (e) => {
-                    const mac = e.target.dataset.mac;
+                    const mac = e.currentTarget.dataset.mac;
                     console.log(`Remove button clicked for MAC: ${mac}`);
                     if (confirm(`Are you sure you want to remove device ${mac}?`)) {
                         performGet(`/remove_device?address=${mac}`, () => reloadMainPage())
@@ -184,8 +184,8 @@ function reloadMainPage() {
 }
 
 function addDevice(device) {
-    alert(`Selected device: ${device.name} (MAC: ${device.address})`);
-    performGet(`/add_device?name=${device.name}&address=${device.address}`);
+    alert(`Selected device: ${device.name} (MAC: ${device.mac_address})`);
+    performGet(`/add_device?name=${device.name}&address=${device.mac_address}`);
     reloadMainPage();
 }
 
@@ -202,7 +202,7 @@ function displayDiscoveredDevices(devices) {
         deviceItem.className = 'device-item';
         deviceItem.innerHTML = `
             <strong>${device.name}</strong><br>
-            <small>${device.address}</small>
+            <small>${device.mac_address}</small>
         `;
         deviceItem.addEventListener('click', () => {
             addDevice(device);
