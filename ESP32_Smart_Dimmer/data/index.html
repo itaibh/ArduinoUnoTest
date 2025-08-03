@@ -6,7 +6,17 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <div id="main" class="container">
+        <div id="registered-devices">
+        </div>
+        <div id="no-devices">
+            <span>No devices configured yet.</span>
+        </div>
+        <div class="dialog-buttons control-group">
+            <button id="search-devices-main">Search For Devices</button>
+        </div>
+    </div>
+    <div id="device-control" class="container" style="display: none;">
         <div class="title">
             <h1>Smart Light Control (Wi-Fi)</h1>
             <button id="add-device">+</button>

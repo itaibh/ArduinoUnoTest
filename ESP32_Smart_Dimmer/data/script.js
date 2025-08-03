@@ -111,6 +111,85 @@ function searchForDevices() {
     }));
 }
 
+const mainPage = getById("main");
+const registeredDevicesDiv = getById("registered-devices");
+const noDevicesSpan = getById("no-devices");
+
+function reloadMainPage() {
+    // Clear previous content to avoid duplicates on reload
+    registeredDevicesDiv.innerHTML = "";
+
+    // Optional: Show a loading message while fetching data
+    registeredDevicesDiv.innerHTML = "<p>Loading configured devices...</p>";
+
+    // Fetch the list of registered devices from the mock server (or ESP32)
+    // Using /get_all_devices for the mock server as per your Python code
+    // If on ESP32, this would be /get_managed_devices
+    performGet("/get_all_devices", (response) => {
+        // Clear the loading message once data is received
+        registeredDevicesDiv.innerHTML = "";
+
+        const devices = JSON.parse(response)
+        if (devices.length === 0) {
+            // If no devices are registered, show the "No devices configured yet." message
+            noDevicesSpan.style.display = "block";
+        } else {
+            // If devices are found, hide the "No devices" message
+            noDevicesSpan.style.display = "none";
+
+            // Iterate over each device and create its HTML representation
+            devices.forEach(device => {
+                const deviceElement = document.createElement("div");
+                deviceElement.className = "registered-device-item"; // Add a class for CSS styling
+                // Give a unique ID for potential future targeting (e.g., controlling a specific device)
+                deviceElement.id = `device-${device.mac_address.replace(/:/g, '')}`;
+
+                // Determine ON/OFF status and apply a class for styling
+                const isOnStatus = device.is_on ? "ON" : "OFF";
+                const statusClass = device.is_on ? "status-on" : "status-off";
+
+                deviceElement.innerHTML = `
+                    <h3>${device.name || "Unnamed Device"}</h3>
+                    <p>MAC: ${device.mac_address}</p>
+                    <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
+                    <div class="device-actions">
+                        <button class="control-device-btn" data-mac="${device.mac_address}">Control</button>
+                        <button class="remove-device-btn" data-mac="${device.mac_address}">Remove</button>
+                    </div>
+                `;
+                registeredDevicesDiv.appendChild(deviceElement);
+
+                // --- Event Listeners for new buttons ---
+                // Example: Control button click (you'll implement the actual control UI later)
+                deviceElement.querySelector(".control-device-btn").addEventListener("click", (e) => {
+                    const mac = e.target.dataset.mac;
+                    console.log(`Control button clicked for MAC: ${mac}`);
+                    alert(`Simulating control panel for ${mac}.\n(You will implement the actual device control UI here.)`);
+                    // TODO: Here you would typically transition to a detailed control panel
+                    // or open a modal for this specific device.
+                });
+
+                // Example: Remove button click (you'll need a backend endpoint for this)
+                deviceElement.querySelector(".remove-device-btn").addEventListener("click", (e) => {
+                    const mac = e.target.dataset.mac;
+                    console.log(`Remove button clicked for MAC: ${mac}`);
+                    if (confirm(`Are you sure you want to remove device ${mac}?`)) {
+                        alert(`Simulating device removal for ${mac}.\n(You will implement a backend /remove_device endpoint.)`);
+                        // TODO: Implement actual backend call to /remove_device?mac=<mac_address>
+                        // After successful removal, call reloadMainPage() again
+                    }
+                });
+            });
+        }
+    });
+}
+
+function addDevice(device) {
+    alert(`Selected device: ${device.name} (MAC: ${device.address})`);
+    performGet(`/add_device?name=${device.name}&address=${device.address}`);
+    reloadMainPage();
+}
+
 function displayDiscoveredDevices(devices) {
     deviceListContainer.innerHTML = ''; // Clear previous content
 
@@ -127,7 +206,7 @@ function displayDiscoveredDevices(devices) {
             <small>${device.address}</small>
         `;
         deviceItem.addEventListener('click', () => {
-            alert(`Selected device: ${device.name} (MAC: ${device.address})`);
+            addDevice(device);
             // Store selected device info or update main UI here
             closeDeviceSelectionDialog();
         });
@@ -466,6 +545,7 @@ function endWarmnessIntensityDrag() {
 // --- Event Listeners and Initial Setup ---
 document.addEventListener('DOMContentLoaded', () => {
     // Initial display update when page loads
+    reloadMainPage();
     updateLightModeDisplay();
 
     // Attach listeners for main mode selection
@@ -477,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach listener for add device button
     getById('add-device').addEventListener('click', openDeviceSelectionDialog);
+    getById('search-devices-main').addEventListener('click', openDeviceSelectionDialog);
     getById('search-devices').addEventListener('click', searchForDevices)
     // Attach listener for modal cancel button
     getById('cancel-device-selection').addEventListener('click', closeDeviceSelectionDialog);
