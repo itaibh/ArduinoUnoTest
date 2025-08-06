@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <string>
+#include <Arduino.h>
 #include "LightMode.h"
 
 // --- HELPER FUNCTION: Escapes a string for JSON output ---
@@ -58,5 +58,13 @@ LightMode stringToLightMode(const String &modeStr)
     return LightMode::MAIN_LIGHT; // Default to MAIN_LIGHT if unrecognized
 }
 
+const char* getDeviceNamespace(String mac_address)
+{
+    String macNoColons = mac_address;
+    macNoColons.replace(":", "");
+    // Use the full MAC address for namespace uniqueness
+    String prefNS = "devcfg_" + macNoColons;
 
+    return prefNS.c_str();
+}
 #endif

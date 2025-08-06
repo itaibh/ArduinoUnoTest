@@ -31,6 +31,9 @@ public:
     void saveSpecificDeviceConfig(const DeviceConfig &config);
     // Public method for debounced saving of the connected device's config
     void tryStore();
+    
+    bool deleteDeviceConfig(const String &mac_address);
+    bool isDeviceConfigured(const String &mac_address);
 
     // Listener callbacks
     void onBluetoothConnected(String mac_address);
@@ -57,10 +60,12 @@ private:
     long lastChangeDetectedTime; // Time when a change was last detected for `currentConnectedMac`'s config
 
     // Private helper to restore a single device's config from NVS
+    void _saveSingleDevice(const DeviceConfig &config);
     DeviceConfig _restoreSingleDevice(String mac_address);
 
     // Private helpers to manage the master list of MAC addresses in Preferences
     void _addMacToMasterList(const String &mac_address);
+    void _removeMacFromMasterList(const String &mac_address);
     std::vector<String> _loadMacsFromMasterList();
 };
 #endif // STORAGE_HANDLER_H

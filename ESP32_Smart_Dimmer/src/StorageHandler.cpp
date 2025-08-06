@@ -1,4 +1,5 @@
 #include "StorageHandler.h"
+#include "Utils.h"
 #include <Arduino.h> // Ensure Arduino core functions like millis() are available
 
 // Use unsigned long for timestamps to avoid rollover issues after ~50 days
@@ -37,7 +38,7 @@ void StorageHandler::loadAllDeviceConfigs()
             allManagedDevices[mac] = config;
             Serial.printf("  Loaded config for %s: Mode=%s, Brightness=%d, IsOn=%d\n",
                           mac.c_str(), lightModeToString(config.light_mode).c_str(),
-                          config.main_brightness, config.isOn);
+                          config.main_brightness, config.is_on);
         }
     }
     Serial.printf("StorageHandler: Finished loading %d devices into memory.\n", allManagedDevices.size());
@@ -62,55 +63,81 @@ std::map<String, DeviceConfig> StorageHandler::getAllManagedDevices()
     return allManagedDevices;
 }
 
-// --- Private Helper: Load master list of MAC addresses ---
+/**
+ * Loads the master list of MAC addresses from NVS.
+ */
 std::vector<String> StorageHandler::_loadMacsFromMasterList()
 {
     std::vector<String> macs;
-    preferences.begin("device_list", true); // Open master list namespace (read-only)
-    String macListStr = preferences.getString("macs", "");
-    preferences.end(); // Close master list namespace
+    preferences.begin("master_list", true);
+    String macsString = preferences.getString("mac_addresses", "");
+    preferences.end();
 
-    if (macListStr.isEmpty())
-        return macs;
-
-    // Simple parser for comma-separated MAC addresses
-    int firstComma = 0;
-    int nextComma = -1;
-    do
+    int lastIndex = -1;
+    while (macsString.length() > 0)
     {
-        nextComma = macListStr.indexOf(',', firstComma);
-        if (nextComma == -1)
-        { // Last MAC address
-            macs.push_back(macListStr.substring(firstComma));
-        }
-        else
+        int commaIndex = macsString.indexOf(',');
+        if (commaIndex == -1)
         {
-            macs.push_back(macListStr.substring(firstComma, nextComma));
+            break;
         }
-        firstComma = nextComma + 1;
-    } while (nextComma != -1);
-
+        macs.push_back(macsString.substring(0, commaIndex));
+        macsString.remove(0, commaIndex + 1);
+    }
     return macs;
 }
 
-// --- Private Helper: Add MAC to master list (if not already present) ---
+/**
+ * Loads the master list of MAC addresses from NVS.
+ */
 void StorageHandler::_addMacToMasterList(const String &mac_address)
 {
-    preferences.begin("device_list", false); // Open master list namespace (read-write)
-    String macListStr = preferences.getString("macs", "");
-
-    // FIX: Use indexOf instead of contains
-    if (macListStr.indexOf(mac_address) == -1)
-    { // Check if MAC is NOT in the list
-        if (!macListStr.isEmpty())
+    std::vector<String> macs = _loadMacsFromMasterList();
+    bool found = false;
+    for (const String &mac : macs)
+    {
+        if (mac == mac_address)
         {
-            macListStr += ","; // Add comma if not the first entry
+            found = true;
+            break;
         }
-        macListStr += mac_address;
-        preferences.putString("macs", macListStr);
-        Serial.printf("StorageHandler: Added %s to master MAC list.\n", mac_address.c_str());
     }
-    preferences.end(); // Close master list namespace
+    if (!found)
+    {
+        macs.push_back(mac_address);
+        String macsString = "";
+        for (const String &mac : macs)
+        {
+            macsString += mac + ",";
+        }
+        preferences.begin("master_list", false);
+        preferences.putString("mac_addresses", macsString);
+        preferences.end();
+    }
+}
+
+/**
+ * Removes a MAC address from the master list.
+ */
+void StorageHandler::_removeMacFromMasterList(const String &mac_address)
+{
+    std::vector<String> macs = _loadMacsFromMasterList();
+    for (size_t i = 0; i < macs.size(); ++i)
+    {
+        if (macs[i] == mac_address)
+        {
+            macs.erase(macs.begin() + i);
+            break;
+        }
+    }
+    String macsString = "";
+    for (const String &mac : macs)
+    {
+        macsString += mac + ",";
+    }
+    preferences.begin("master_list", false);
+    preferences.putString("mac_addresses", macsString);
+    preferences.end();
 }
 
 // --- Private Helper: Restore (load) a single device's config from Preferences ---
@@ -119,36 +146,35 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
     DeviceConfig config;
     config.mac_address = mac_address; // Always set MAC for the config being restored
 
-    String macNoColons = mac_address;
-    macNoColons.replace(":", "");
     // Use the full MAC address for namespace uniqueness
-    String prefNS = "devcfg_" + macNoColons;
-
-    preferences.begin(prefNS.c_str(), true); // Open device namespace (read-only)
+    const char* prefNS = getDeviceNamespace(mac_address);
+    preferences.begin(prefNS, true); // Open device namespace (read-only)
 
     // Check if namespace has data (e.g., if "fan_speed" key exists)
     if (preferences.isKey("fan_speed"))
     { // Check for a key to confirm data exists for this device
+        config.name = preferences.getString("name", "Unnamed");
         config.fan_speed = preferences.getUChar("fan_speed", 0);
         config.light_mode = static_cast<LightMode>(preferences.getInt("light_mode", LightMode::MAIN_LIGHT));
         config.main_brightness = preferences.getUChar("main_brightness", 0);
         config.main_warmness = preferences.getUChar("main_warmness", 0);
         config.ring_hue = preferences.getUChar("ring_hue", 0);
         config.ring_brightness = preferences.getUChar("ring_brightness", 0);
-        config.isOn = preferences.getBool("is_on", false); // Read isOn
+        config.is_on = preferences.getBool("is_on", false); // Read isOn
         Serial.printf("StorageHandler: Restored config for %s from NVS.\n", mac_address.c_str());
     }
     else
     {
         // If no existing config, initialize with defaults
         Serial.printf("StorageHandler: No existing config for %s, initializing with defaults.\n", mac_address.c_str());
+        config.name = "Unnamed";
         config.fan_speed = 0;
         config.light_mode = LightMode::MAIN_LIGHT;
-        config.main_brightness = 0;
-        config.main_warmness = 0;
+        config.main_brightness = 8;
+        config.main_warmness = 140;
         config.ring_hue = 0;
-        config.ring_brightness = 0;
-        config.isOn = false; // Default new devices to off
+        config.ring_brightness = 160;
+        config.is_on = false; // Default new devices to off
         // This default config will be added to allManagedDevices and then saved by saveSpecificDeviceConfig
         // when a device is first seen/connected.
     }
@@ -161,20 +187,18 @@ void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 {
     Serial.printf("StorageHandler: Saving config for %s to Preferences...\n", config.mac_address.c_str());
 
-    String macNoColons = config.mac_address;
-    macNoColons.replace(":", "");
-    String prefNS = "devcfg_" + macNoColons; // Using full MAC for namespace uniqueness
-
-    preferences.begin(prefNS.c_str(), false); // Open device namespace (read-write)
+    const char* prefNS = getDeviceNamespace(config.mac_address);
+    preferences.begin(prefNS, false); // Open device namespace (read-write)
 
     // Write all current values for the config
+    preferences.putString("name", config.name);
     preferences.putUChar("fan_speed", config.fan_speed);
     preferences.putInt("light_mode", static_cast<int>(config.light_mode));
     preferences.putUChar("main_brightness", config.main_brightness);
     preferences.putUChar("main_warmness", config.main_warmness);
     preferences.putUChar("ring_hue", config.ring_hue);
     preferences.putUChar("ring_brightness", config.ring_brightness);
-    preferences.putBool("is_on", config.isOn); // Save isOn
+    preferences.putBool("is_on", config.is_on); // Save isOn
 
     preferences.end(); // Close device namespace
 
@@ -189,7 +213,35 @@ void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 
     Serial.printf("StorageHandler: Saved %s config: Mode=%s, Brightness=%d, Fan=%d, IsOn=%d\n",
                   config.mac_address.c_str(), lightModeToString(config.light_mode).c_str(),
-                  config.main_brightness, config.fan_speed, config.isOn);
+                  config.main_brightness, config.fan_speed, config.is_on);
+}
+
+/**
+ * Checks if a device is configured.
+ */
+bool StorageHandler::isDeviceConfigured(const String &mac_address)
+{
+    return allManagedDevices.count(mac_address) > 0;
+}
+
+/**
+ * Deletes a device's config from both RAM and NVS.
+ */
+bool StorageHandler::deleteDeviceConfig(const String &mac_address)
+{
+    if (isDeviceConfigured(mac_address))
+    {
+        allManagedDevices.erase(mac_address); // Erase from RAM
+        _removeMacFromMasterList(mac_address); // Remove from master list in NVS
+
+        // Erase the device's config from NVS
+        preferences.begin(String("device_" + mac_address).c_str(), false);
+        preferences.clear();
+        preferences.end();
+        Serial.printf("Removed device %s from NVS.\n", mac_address.c_str());
+        return true;
+    }
+    return false;
 }
 
 // --- Listener: On Bluetooth Connected ---
