@@ -56,11 +56,17 @@ body {
 
 #back-to-main-menu {
     background-color: #5c53ff;
+    background-image: url("data:image/svg+xml,<svg width='48' height='48' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'><path style='fill:white' d='M 24,4 6,18 H 8 V 44 H 40 V 18 h 2 z m 0,3.5 13,10 V 41 H 29 V 23 H 18 V 41 H 11 V 17.5 Z M 20,25 h 7 v 16 h -7 z' /></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
     left: 1em;
 }
 
 #add-device {
     background-color: #4CAF50;
+    background-image: url("data:image/svg+xml,<svg width='48' height='48' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'><path style='fill:white' d='m 8,22 v 4 h 14 v 14 h 4 V 26 H 40 V 22 H 26 V 8 h -4 v 14 z' /></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
     right: 1em;
 }
 

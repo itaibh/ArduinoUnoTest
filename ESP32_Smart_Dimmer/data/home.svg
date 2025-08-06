@@ -3,7 +3,52 @@
    width="48"
    height="48"
    version="1.1"
+   id="svg1"
+   sodipodi:docname="home.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-    <path d="M 24,0 6,14 H 8 V 48 H 40 V 14 h 2 z m 0,3.5 13,10 V 45 H 29 V 21 H 18 V 45 H 11 V 13.5 Z M 20,23 h 7 v 22 h -7 z" />
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="true"
+     inkscape:zoom="17.176802"
+     inkscape:cx="40.228675"
+     inkscape:cy="24.626237"
+     inkscape:window-width="2494"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1">
+    <inkscape:grid
+       id="grid1"
+       units="px"
+       originx="0"
+       originy="0"
+       spacingx="1"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       enabled="true"
+       visible="true" />
+  </sodipodi:namedview>
+  <path
+     d="M 24,4 6,18 H 8 V 44 H 40 V 18 h 2 z m 0,3.5 13,10 V 41 H 29 V 23 H 18 V 41 H 11 V 17.5 Z M 20,25 h 7 v 16 h -7 z"
+     id="path1"
+     sodipodi:nodetypes="ccccccccccccccccccccccc"
+     style="fill:#000000;fill-opacity:1" />
 </svg>
