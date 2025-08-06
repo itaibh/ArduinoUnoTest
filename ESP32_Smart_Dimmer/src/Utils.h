@@ -58,13 +58,12 @@ LightMode stringToLightMode(const String &modeStr)
     return LightMode::MAIN_LIGHT; // Default to MAIN_LIGHT if unrecognized
 }
 
-const char* getDeviceNamespace(String mac_address)
+const String getDeviceNamespace(String mac_address)
 {
     String macNoColons = mac_address;
     macNoColons.replace(":", "");
     // Use the full MAC address for namespace uniqueness
     String prefNS = "devcfg_" + macNoColons;
-
-    return prefNS.c_str();
+    return prefNS;
 }
 #endif

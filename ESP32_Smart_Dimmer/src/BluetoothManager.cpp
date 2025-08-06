@@ -64,6 +64,81 @@ void BluetoothManager::disconnect()
     }
 }
 
+// Connects to a specific device
+bool BluetoothManager::connectToDevice(const String &mac_address)
+{
+    if (deviceConnected)
+    {
+        if (connectedMacAddress == mac_address)
+        {
+            Serial.println("Already connected to this device.");
+            return true;
+        }
+        disconnect();
+    }
+
+    if (SerialBT.connect(mac_address))
+    {
+        deviceConnected = true;
+        connectedMacAddress = mac_address;
+        if (connectionListener)
+        {
+            connectionListener->onBluetoothConnected(connectedMacAddress);
+        }
+        Serial.printf("Successfully connected to: %s\n", mac_address.c_str());
+        return true;
+    }
+    else
+    {
+        Serial.printf("Failed to connect to: %s\n", mac_address.c_str());
+        return false;
+    }
+}
+
+bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
+{
+    if (!deviceConnected || connectedMacAddress != config.mac_address)
+    {
+        // Automatically try to connect if not connected to the right device
+        if (!connectToDevice(config.mac_address))
+        {
+            Serial.println("Failed to connect for sending command.");
+            return false;
+        }
+    }
+
+    // Now call your existing sendCommand with the new parameters
+    uint8_t payload[4]; // Max payload size for your commands
+
+    // Light ON/OFF
+    payload[0] = config.is_on ? 0x01 : 0x00;
+    sendCommand(CMD_LIGHT_ON_OFF, payload, 1);
+
+    // Fan Speed
+    payload[0] = config.fan_speed;
+    sendCommand(CMD_FAN_SPEED, payload, 1);
+
+    // Light Intensity
+    payload[0] = config.main_brightness;
+    sendCommand(CMD_LIGHT_INTENSITY, payload, 1);
+
+    // Warmness
+    payload[0] = config.main_warmness;
+    sendCommand(CMD_LIGHT_WARMNESS, payload, 1);
+
+    // RGB (if applicable)
+    if (config.light_mode == LightMode::RGB_RING)
+    {
+        payload[0] = (config.ring_hue >> 8) & 0xFF;
+        payload[1] = config.ring_hue & 0xFF;
+        payload[2] = config.ring_brightness;
+        sendCommand(CMD_RGB, payload, 3);
+    }
+    // Note: You may need more logic here for other light modes
+
+    return true;
+}
+
 void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize)
 {
     if (!deviceConnected)
@@ -286,7 +361,8 @@ std::map<String, BtDevice> BluetoothManager::scanForDevices()
             String name = device_result->getName().c_str();
             BTAddress address = device_result->getAddress();
             Serial.printf("  - Found Device: %s, Address: %s\n", name.c_str(), address.toString().c_str());
-            if (address.toString().startsWith("C9:A3:05")) {
+            if (address.toString().startsWith("C9:A3:05"))
+            {
                 foundDevices[address.toString()] = {name, address.toString()};
             }
         }

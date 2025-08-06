@@ -169,7 +169,7 @@ void WebServerModule::handleAddDevice() {
             newConfig.ring_brightness = 0;
             newConfig.is_on = false;
 
-            storageHandler->saveSpecificDeviceConfig(address, newConfig);
+            storageHandler->saveSpecificDeviceConfig(newConfig);
             _server.send(200, "text/plain", "OK");
             Serial.printf("Device %s (%s) added successfully.\n", name.c_str(), address.c_str());
         } else {
@@ -263,9 +263,9 @@ void WebServerModule::handleControl() {
     }
 
     // Now, send the control commands via Bluetooth
-    if (btManager->sendControlCommand(address, currentConfig)) {
+    if (btManager->sendConfigToDevice(currentConfig)) {
         // If the command was sent successfully, save the new state to storage
-        storageHandler->saveSpecificDeviceConfig(address, currentConfig);
+        storageHandler->saveSpecificDeviceConfig(currentConfig);
         _server.send(200, "text/plain", "OK");
         Serial.printf("Control commands sent and state saved for %s.\n", address.c_str());
     } else {

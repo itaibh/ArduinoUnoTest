@@ -3,8 +3,9 @@
 
 #include <vector>
 #include <map>
-#include <string>
+#include <Arduino.h>
 #include <BluetoothSerial.h>
+#include "DeviceConfig.h"
 
 // Define constants for received packet parsing
 // These are based on your observed "BT Data Received" logs
@@ -54,17 +55,21 @@ public:
     bool isConnected();
     void disconnect();
     void sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize);
+    bool sendConfigToDevice(const DeviceConfig &config);
     void registerConnectionListener(IBluetoothConnectionListener *listener);
     bool waitForAck(const std::vector<CommandType> &expectedAckTypes, unsigned long timeout_ms);
     std::map<String, BtDevice> scanForDevices();
+
 private:
     BluetoothSerial SerialBT;
     BTAddress targetDeviceAddress;
     const char *espDeviceName;
     bool deviceConnected = false;
+    String connectedMacAddress;
     IBluetoothConnectionListener *connectionListener = nullptr;
     long lastSendTime;
 
+    bool connectToDevice(const String& mac_address);
     void connectToServer();
     void handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 

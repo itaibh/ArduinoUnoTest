@@ -147,7 +147,7 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
     config.mac_address = mac_address; // Always set MAC for the config being restored
 
     // Use the full MAC address for namespace uniqueness
-    const char* prefNS = getDeviceNamespace(mac_address);
+    const char *prefNS = getDeviceNamespace(mac_address).c_str();
     preferences.begin(prefNS, true); // Open device namespace (read-only)
 
     // Check if namespace has data (e.g., if "fan_speed" key exists)
@@ -187,7 +187,7 @@ void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 {
     Serial.printf("StorageHandler: Saving config for %s to Preferences...\n", config.mac_address.c_str());
 
-    const char* prefNS = getDeviceNamespace(config.mac_address);
+    const char *prefNS = getDeviceNamespace(config.mac_address).c_str();
     preferences.begin(prefNS, false); // Open device namespace (read-write)
 
     // Write all current values for the config
@@ -217,6 +217,16 @@ void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 }
 
 /**
+ * @brief Loads a specific device's configuration into the provided struct.
+ */
+bool StorageHandler::loadSpecificDeviceConfig(const String& mac_address, DeviceConfig& config) {
+    if (allManagedDevices.count(mac_address) > 0) {
+        config = allManagedDevices.at(mac_address);
+        return true;
+    }
+    return false;
+}
+/**
  * Checks if a device is configured.
  */
 bool StorageHandler::isDeviceConfigured(const String &mac_address)
@@ -231,7 +241,7 @@ bool StorageHandler::deleteDeviceConfig(const String &mac_address)
 {
     if (isDeviceConfigured(mac_address))
     {
-        allManagedDevices.erase(mac_address); // Erase from RAM
+        allManagedDevices.erase(mac_address);  // Erase from RAM
         _removeMacFromMasterList(mac_address); // Remove from master list in NVS
 
         // Erase the device's config from NVS

@@ -29,6 +29,7 @@ public:
 
     // Public function to save a specific device's config
     void saveSpecificDeviceConfig(const DeviceConfig &config);
+    bool loadSpecificDeviceConfig(const String &mac_address, DeviceConfig &config);
     // Public method for debounced saving of the connected device's config
     void tryStore();
     
@@ -60,7 +61,6 @@ private:
     long lastChangeDetectedTime; // Time when a change was last detected for `currentConnectedMac`'s config
 
     // Private helper to restore a single device's config from NVS
-    void _saveSingleDevice(const DeviceConfig &config);
     DeviceConfig _restoreSingleDevice(String mac_address);
 
     // Private helpers to manage the master list of MAC addresses in Preferences
