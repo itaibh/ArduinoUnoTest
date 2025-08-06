@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="48"
+   height="48"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+    <path d="M 24,0 6,14 H 8 V 48 H 40 V 14 h 2 z m 0,3.5 13,10 V 45 H 29 V 21 H 18 V 45 H 11 V 13.5 Z M 20,23 h 7 v 22 h -7 z" />
+</svg>

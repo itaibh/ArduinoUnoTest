@@ -39,30 +39,29 @@ body {
     color: #2c3e50;
 }
 
-.title-button {
+.main-action-button {
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 1.2em;
-    cursor: pointer;
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    font-size: 2em;
+    font-weight: bolder;
     transition: background-color 0.3s ease, transform 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 71%);
+    padding: 0;
+    position: fixed;
+    bottom: 1em;
 }
+
 #back-to-main-menu {
     background-color: #5c53ff;
+    left: 1em;
 }
-/* Add Device Button */
+
 #add-device {
-    background-color: #4CAF50; /* Green */
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 1.2em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background-color: #4CAF50;
+    right: 1em;
 }
 
 #add-device:hover {

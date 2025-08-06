@@ -111,6 +111,7 @@ function searchForDevices() {
     }));
 }
 
+
 const mainPage = getById("main");
 const registeredDevicesDiv = getById("registered-devices");
 const noDevicesSpan = getById("no-devices");
@@ -181,6 +182,11 @@ function reloadMainPage() {
             });
         }
     });
+}
+
+function goHome() {
+    mainPage.style.display = "block";
+    deviceControlDiv.style.display = "none";
 }
 
 function addDevice(device) {
@@ -558,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
     getById('add-device').addEventListener('click', openDeviceSelectionDialog);
     getById('search-devices-main').addEventListener('click', openDeviceSelectionDialog);
     getById('search-devices').addEventListener('click', searchForDevices)
+    getById('back-to-main-menu').addEventListener('click', goHome)
     // Attach listener for modal cancel button
     getById('cancel-device-selection').addEventListener('click', closeDeviceSelectionDialog);
     deviceSelectionOverlay.addEventListener('click', (e) => {
