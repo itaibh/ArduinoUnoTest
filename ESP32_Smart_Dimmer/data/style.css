@@ -80,6 +80,24 @@ body {
     transform: translateY(0);
 }
 
+.registered-device-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.remove-device-btn {
+    background-color: #C00;
+    background-image: url("data:image/svg+xml,<svg width='48' height='48' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:svg='http://www.w3.org/2000/svg'><path style='fill:white' d='M 24 4 C 17.675445 4 6 10 6 10 L 8 12 L 10 44 L 38 44 L 40 12 L 42 10 C 42 10 30.324555 4 24 4 z M 24 7.5 C 28.533824 7.5 37 11.5 37 11.5 L 35 41 L 13 41 L 11 11.5 C 11 11.5 19.466176 7.5 24 7.5 z M 16 15 L 17 35 L 19 35 L 18 15 L 16 15 z M 23 15 L 23 35 L 25 35 L 25 15 L 23 15 z M 30 15 L 29 35 L 31 35 L 32 15 L 30 15 z' /></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    right: 1em;
+}
+
+.device-actions {
+    display: flex;
+}
+
 /* Control Group Styling */
 .control-group {
     background-color: #f9f9f9; /* Light background for groups */
