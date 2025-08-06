@@ -4,6 +4,7 @@
 
 #include <WebServer.h>
 #include <SPIFFS.h>
+#include "BluetoothManager.h"
 #include "LightController.h"
 #include "FanController.h"
 #include "StorageHandler.h"
@@ -33,11 +34,15 @@ private:
     FanController* fanCtrl;
 
     // Private helper methods
+    void setupRoutes();
     void handleRoot();
     void handleControl();
     void handleFindDevices();
     void handleGetAllDevices();
     void handleNotFound();
+    void handleAddDevice();
+    void handleRemoveDevice();
+
     String getContentType(String filename);
 };
 

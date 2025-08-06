@@ -1,142 +1,136 @@
 #include "WebServerModule.h"
-#include "Utils.h"
-#include <Arduino.h> // For Serial.print
+#include <SPIFFS.h>
+#include <functional>
 
-// Note: If your stub methods are within a class, you would pass an instance
-// of that class to WebServerModule during its initialization, and then
-// call methods on that instance. For now, we assume global access via externs.
+/**
+ * Constructor: Initializes pointers to component classes.
+ */
+WebServerModule::WebServerModule(StorageHandler* sh, BluetoothManager* bt, LightController* lc, FanController* fc)
+    : storageHandler(sh), btManager(bt), lightCtrl(lc), fanCtrl(fc) {
+    // Constructor logic if needed
+}
 
-// Constructor - initializes the WebServer on port 80
-WebServerModule::WebServerModule(StorageHandler* sh, BluetoothManager *bt, LightController *lc, FanController *fc)
-    : _server(80), storageHandler(sh), btManager(bt), lightCtrl(lc), fanCtrl(fc) {}
-
-bool WebServerModule::begin()
-{
-    // Initialize SPIFFS before serving files
-    if (!SPIFFS.begin(true))
-    {
-        Serial.println("WebServerModule: Error mounting SPIFFS! Web server cannot serve files.");
+/**
+ * Begin: Initializes the web server and its routes.
+ */
+bool WebServerModule::begin() {
+    if (!SPIFFS.begin(true)) {
+        Serial.println("An error occurred while mounting SPIFFS");
         return false;
     }
-    Serial.println("WebServerModule: SPIFFS mounted successfully.");
+    Serial.println("SPIFFS mounted successfully");
 
-    // Define web server routes
-    _server.on("/", HTTP_GET, std::bind(&WebServerModule::handleRoot, this));
-    _server.on("/control", HTTP_GET, std::bind(&WebServerModule::handleControl, this));
-    _server.on("/discover_devices", HTTP_GET, std::bind(&WebServerModule::handleFindDevices, this));
-    _server.onNotFound(std::bind(&WebServerModule::handleNotFound, this));
+    setupRoutes();
 
     _server.begin();
-    Serial.println("WebServerModule: HTTP server started on port 80.");
+    Serial.println("HTTP server started");
     return true;
 }
 
-void WebServerModule::handleClient()
-{
+/**
+ * Handle client: Must be called in the main loop().
+ */
+void WebServerModule::handleClient() {
     _server.handleClient();
 }
 
-void WebServerModule::handleRoot()
-{
-    File file = SPIFFS.open("/index.html", "r");
-    if (!file)
-    {
-        Serial.println("WebServerModule: Failed to open index.html from SPIFFS.");
-        _server.send(404, "text/plain", "File Not Found. Please upload index.html to SPIFFS.");
-        return;
-    }
-    _server.streamFile(file, "text/html");
-    file.close();
-    Serial.println("WebServerModule: Served index.html");
+/**
+ * Sets up all HTTP endpoints for the server.
+ */
+void WebServerModule::setupRoutes() {
+    // Root path handler
+    _server.on("/", HTTP_GET, std::bind(&WebServerModule::handleRoot, this));
+    
+    // API endpoints corresponding to the Python mock server
+    _server.on("/discover_devices", HTTP_GET, std::bind(&WebServerModule::handleFindDevices, this));
+    _server.on("/get_all_devices", HTTP_GET, std::bind(&WebServerModule::handleGetAllDevices, this));
+    _server.on("/add_device", HTTP_GET, std::bind(&WebServerModule::handleAddDevice, this));
+    _server.on("/remove_device", HTTP_GET, std::bind(&WebServerModule::handleRemoveDevice, this));
+    _server.on("/control", HTTP_GET, std::bind(&WebServerModule::handleControl, this));
+
+    // Not found handler
+    _server.onNotFound(std::bind(&WebServerModule::handleNotFound, this));
 }
 
-void WebServerModule::handleControl()
-{
-    String mode = _server.arg("mode");
-    int brightness = _server.arg("bright").toInt();
-    int warmness = _server.arg("warm").toInt();
-    int rgbHue = _server.arg("hue").toInt();
-    int rgbBrightness = _server.arg("rgbBright").toInt();
-    int fanSpeed = _server.arg("fan").toInt();
-
-    Serial.print("WebServerModule: Received Web Control: ");
-    Serial.print("Mode=");
-    Serial.print(mode);
-    Serial.print(", Bright=");
-    Serial.print(brightness);
-    Serial.print(", Warm=");
-    Serial.print(warmness);
-    Serial.print(", Hue=");
-    Serial.print(rgbHue);
-    Serial.print(", RGBBright=");
-    Serial.print(rgbBrightness);
-    Serial.print(", Fan=");
-    Serial.println(fanSpeed);
-
-    // Call your existing stub methods
-    if (mode == "off")
-    {
-        lightCtrl->turnOff();
+/**
+ * Serves index.html as the root page.
+ */
+void WebServerModule::handleRoot() {
+    String path = "/index.html";
+    if (_server.hasArg("download")) {
+        path = _server.arg("download");
     }
-    else
-    {
-        LightMode lightMode = mode == "main" ? LightMode::MAIN_LIGHT : LightMode::RGB_RING;
-        lightCtrl->setAll(lightMode, brightness, warmness, rgbBrightness, rgbHue);
+    String contentType = getContentType(path);
+    if (SPIFFS.exists(path)) {
+        File file = SPIFFS.open(path, "r");
+        _server.streamFile(file, contentType);
+        file.close();
+    } else {
+        handleNotFound();
     }
-    fanCtrl->setSpeed(fanSpeed);
-
-    _server.send(200, "text/plain", "OK"); // Send a simple "OK" back to the client
 }
 
-void WebServerModule::handleFindDevices()
-{
-    std::map<String, BtDevice> devices = btManager->scanForDevices();
+/**
+ * Handles the '/discover_devices' endpoint.
+ * Returns a JSON array of discovered Bluetooth devices.
+ */
+void WebServerModule::handleFindDevices() {
+    Serial.println("Handling /discover_devices request - performing Bluetooth scan.");
+
+    std::map<String, BtDevice> scannedDevices = btManager->scanForDevices();
+    const auto& configuredDevices = storageHandler->getAllManagedDevices();
 
     String jsonResponse = "[";
     bool firstDevice = true;
-    for (auto const &pair : devices)
-    { // Use 'pair' for C++11 compatibility
-        const String &mac = pair.first;
-        const BtDevice &config = pair.second;
+    for (auto const& pair : scannedDevices) {
+        const String& mac = pair.first;
+        const BtDevice& btDevice = pair.second;
 
-        if (!firstDevice)
-        {
+        if (!firstDevice) {
             jsonResponse += ",";
         }
         firstDevice = false;
 
         jsonResponse += "{";
-        jsonResponse += "\"address\":\"" + config.address + "\",";
-        jsonResponse += "\"name\":" + config.name;
+        jsonResponse += "\"name\":\"" + btDevice.name + "\",";
+        jsonResponse += "\"mac_address\":\"" + btDevice.address + "\",";
+        
+        bool isConfigured = configuredDevices.count(mac);
+        jsonResponse += ",\"is_configured\":";
+        jsonResponse += isConfigured ? "true" : "false";
+        
         jsonResponse += "}";
     }
     jsonResponse += "]";
 
-    Serial.printf("Sent /discover_devices response (Manual JSON): %s\n", jsonResponse.c_str());
-    _server.sendHeader("Access-Control-Allow-Origin", "*"); // IMPORTANT: Enable CORS
     _server.send(200, "application/json", jsonResponse);
+    Serial.printf("Sent /discover_devices response. Count: %d\n", scannedDevices.size());
 }
 
-void WebServerModule::handleGetAllDevices()
-{
-    // std::map<String, BtDevice> devices = btManager->scanForDevices();
-    std::map<String, DeviceConfig> devices = storageHandler->getAllManagedDevices();
+/**
+ * Handles the '/get_all_devices' endpoint.
+ * Returns a JSON object of all configured devices.
+ */
+void WebServerModule::handleGetAllDevices() {
+    Serial.println("Handling /get_all_devices request.");
 
-    String jsonResponse = "[";
-    bool firstDevice = true;
-    for (auto const &pair : devices)
-    { // Use 'pair' for C++11 compatibility
-        const String &mac = pair.first;
-        const DeviceConfig &config = pair.second;
+    const auto& devicesMap = storageHandler->getAllManagedDevices();
 
-        if (!firstDevice)
-        {
+    // Matching the Python mock server's output: a JSON object, not an array
+    String jsonResponse = "{";
+    bool firstEntry = true;
+    for (auto const& pair : devicesMap) {
+        const String& mac = pair.first;
+        const DeviceConfig& config = pair.second;
+
+        if (!firstEntry) {
             jsonResponse += ",";
         }
-        firstDevice = false;
+        firstEntry = false;
 
-        jsonResponse += "{";
+        jsonResponse += "\"" + mac + "\":{";
         jsonResponse += "\"mac_address\":\"" + config.mac_address + "\",";
+        jsonResponse += "\"name\":\"" + config.name + "\",";
         jsonResponse += "\"fan_speed\":" + String(config.fan_speed) + ",";
         jsonResponse += "\"light_mode\":\"" + lightModeToString(config.light_mode) + "\",";
         jsonResponse += "\"main_brightness\":" + String(config.main_brightness) + ",";
@@ -144,62 +138,178 @@ void WebServerModule::handleGetAllDevices()
         jsonResponse += "\"ring_hue\":" + String(config.ring_hue) + ",";
         jsonResponse += "\"ring_brightness\":" + String(config.ring_brightness) + ",";
         jsonResponse += "\"is_on\":";
-        jsonResponse += (config.isOn ? "true" : "false"); // Convert bool to "true" or "false"
-
-        // Optional: Add connected status if currentConnectedMac is accessible
-        // bool isConnected = (mac == storageHandler.currentConnectedMac);
-        // jsonResponse += ",\"connected\":" + (isConnected ? "true" : "false");
-
+        jsonResponse += config.is_on ? "true" : "false";
         jsonResponse += "}";
     }
-    jsonResponse += "]";
+    jsonResponse += "}";
 
-    Serial.printf("Sent /discover_devices response (Manual JSON): %s\n", jsonResponse.c_str());
-    _server.sendHeader("Access-Control-Allow-Origin", "*"); // IMPORTANT: Enable CORS
     _server.send(200, "application/json", jsonResponse);
+    Serial.printf("Sent /get_all_devices response. Count: %d\n", devicesMap.size());
 }
 
-void WebServerModule::handleNotFound()
-{
-    String path = _server.uri();
-    Serial.print("WebServerModule: Requested file: ");
-    Serial.println(path);
+/**
+ * Handles the '/add_device?name=<name>&address=<mac>' endpoint.
+ */
+void WebServerModule::handleAddDevice() {
+    String name = _server.arg("name");
+    String address = _server.arg("address");
 
-    if (SPIFFS.exists(path))
-    {
-        File file = SPIFFS.open(path, "r");
-        if (file)
-        {
-            String contentType = getContentType(path);
-            _server.streamFile(file, contentType);
-            file.close();
-            Serial.print("WebServerModule: Served ");
-            Serial.println(path);
-            return;
+    Serial.printf("Handling /add_device request. Name: %s, Address: %s\n", name.c_str(), address.c_str());
+
+    if (name.length() > 0 && address.length() > 0) {
+        if (!storageHandler->isDeviceConfigured(address)) {
+            DeviceConfig newConfig;
+            newConfig.mac_address = address;
+            newConfig.name = name;
+            newConfig.fan_speed = 0;
+            newConfig.light_mode = LightMode::MAIN_LIGHT;
+            newConfig.main_brightness = 8;
+            newConfig.main_warmness = 150;
+            newConfig.ring_hue = 0;
+            newConfig.ring_brightness = 0;
+            newConfig.is_on = false;
+
+            storageHandler->saveSpecificDeviceConfig(address, newConfig);
+            _server.send(200, "text/plain", "OK");
+            Serial.printf("Device %s (%s) added successfully.\n", name.c_str(), address.c_str());
+        } else {
+            _server.send(409, "text/plain", "Error: Device already configured.");
+            Serial.printf("Error: Device %s already configured.\n", address.c_str());
+        }
+    } else {
+        _server.send(400, "text/plain", "Error: Missing 'name' or 'address' parameters.");
+        Serial.println("Error: Missing 'name' or 'address' parameters.");
+    }
+}
+
+/**
+ * Handles the '/remove_device?address=<mac>' endpoint.
+ */
+void WebServerModule::handleRemoveDevice() {
+    String address = _server.arg("address");
+
+    Serial.printf("Handling /remove_device request for address: %s\n", address.c_str());
+
+    if (address.length() > 0) {
+        if (storageHandler->deleteDeviceConfig(address)) {
+            _server.send(200, "text/plain", "OK");
+            Serial.printf("Device %s removed successfully.\n", address.c_str());
+        } else {
+            _server.send(404, "text/plain", "Error: Device not found.");
+            Serial.printf("Error: Device %s not found in storage.\n", address.c_str());
+        }
+    } else {
+        _server.send(400, "text/plain", "Error: Missing 'address' parameter.");
+        Serial.println("Error: Missing 'address' parameter.");
+    }
+}
+
+/**
+ * Handles the '/control?address=<mac>&<params>...' endpoint.
+ */
+void WebServerModule::handleControl() {
+    String address = _server.arg("address");
+    
+    if (address.length() == 0) {
+        _server.send(400, "text/plain", "Error: Missing 'address' parameter.");
+        return;
+    }
+
+    Serial.printf("Handling /control request for address: %s\n", address.c_str());
+
+    // Retrieve the device's current state from StorageHandler
+    DeviceConfig currentConfig;
+    if (!storageHandler->loadSpecificDeviceConfig(address, currentConfig)) {
+        _server.send(404, "text/plain", "Error: Device not found.");
+        return;
+    }
+
+    // Update the device's state based on query parameters
+    if (_server.hasArg("fan_speed")) {
+        currentConfig.fan_speed = _server.arg("fan_speed").toInt();
+        fanCtrl->setSpeed(currentConfig.fan_speed);
+    }
+    if (_server.hasArg("main_brightness")) {
+        currentConfig.main_brightness = _server.arg("main_brightness").toInt();
+    }
+    if (_server.hasArg("main_warmness")) {
+        currentConfig.main_warmness = _server.arg("main_warmness").toInt();
+    }
+    if (_server.hasArg("ring_hue")) {
+        currentConfig.ring_hue = _server.arg("ring_hue").toInt();
+    }
+    if (_server.hasArg("ring_brightness")) {
+        currentConfig.ring_brightness = _server.arg("ring_brightness").toInt();
+    }
+    if (_server.hasArg("is_on")) {
+        String isOnStr = _server.arg("is_on");
+        currentConfig.is_on = (isOnStr == "true" || isOnStr == "1");
+    }
+    if (_server.hasArg("light_mode")) {
+        String lightModeArg = _server.arg("light_mode");
+        if (lightModeArg == "off") {
+            currentConfig.is_on = false;
+        }
+        else if (lightModeArg == "main") {
+            currentConfig.is_on = true;
+            currentConfig.light_mode = LightMode::MAIN_LIGHT;
+        } else if (lightModeArg == "rgb") {
+            currentConfig.is_on = true;
+            currentConfig.light_mode = LightMode::RGB_RING;
+        }
+        else {
+            Serial.printf("light mode not supported: %s\n", lightModeArg);
         }
     }
-    _server.send(404, "text/plain", "File Not Found");
-    Serial.println("WebServerModule: File Not Found (404)");
+
+    // Now, send the control commands via Bluetooth
+    if (btManager->sendControlCommand(address, currentConfig)) {
+        // If the command was sent successfully, save the new state to storage
+        storageHandler->saveSpecificDeviceConfig(address, currentConfig);
+        _server.send(200, "text/plain", "OK");
+        Serial.printf("Control commands sent and state saved for %s.\n", address.c_str());
+    } else {
+        _server.send(503, "text/plain", "Error: Could not send command via Bluetooth. Is the device connected?");
+        Serial.printf("Error: Failed to send BT command to %s.\n", address.c_str());
+    }
 }
 
-String WebServerModule::getContentType(String filename)
-{
-    if (filename.endsWith(".html"))
-        return "text/html";
-    else if (filename.endsWith(".css"))
-        return "text/css";
-    else if (filename.endsWith(".js"))
-        return "application/javascript";
-    else if (filename.endsWith(".json"))
-        return "application/json";
-    else if (filename.endsWith(".png"))
-        return "image/png";
-    else if (filename.endsWith(".gif"))
-        return "image/gif";
-    else if (filename.endsWith(".jpg"))
-        return "image/jpeg";
-    else if (filename.endsWith(".ico"))
-        return "image/x-icon";
-    else
-        return "application/octet-stream";
+/**
+ * Handles 404 (Not Found) errors.
+ */
+void WebServerModule::handleNotFound() {
+    // Check if the requested file exists in SPIFFS and serve it
+    String path = _server.uri();
+    if (SPIFFS.exists(path)) {
+        String contentType = getContentType(path);
+        File file = SPIFFS.open(path, "r");
+        _server.streamFile(file, contentType);
+        file.close();
+        return;
+    }
+    // If the file doesn't exist, send a 404
+    String message = "File Not Found\n\n";
+    message += "URI: ";
+    message += _server.uri();
+    message += "\nMethod: ";
+    message += (_server.method() == HTTP_GET) ? "GET" : "POST";
+    _server.send(404, "text/plain", message);
+}
+
+
+/**
+ * Helper to determine content type from file extension.
+ */
+String WebServerModule::getContentType(String filename) {
+    if (_server.hasArg("download")) return "application/octet-stream";
+    else if (filename.endsWith(".htm")) return "text/html";
+    else if (filename.endsWith(".html")) return "text/html";
+    else if (filename.endsWith(".css")) return "text/css";
+    else if (filename.endsWith(".js")) return "application/javascript";
+    else if (filename.endsWith(".png")) return "image/png";
+    else if (filename.endsWith(".gif")) return "image/gif";
+    else if (filename.endsWith(".jpg")) return "image/jpeg";
+    else if (filename.endsWith(".ico")) return "image/x-icon";
+    else if (filename.endsWith(".xml")) return "text/xml";
+    return "text/plain";
 }
