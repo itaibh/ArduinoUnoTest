@@ -3,6 +3,17 @@ const getById = (id) => document.getElementById(id);
 
 let rgbPickerInitialized = false;
 let warmnessIntensityPickerInitialized = false;
+let registeredDevices = {};
+
+let warmnessPickerImage = getById('warmness-picker-image');
+let warmnessPointer = getById('warmness-pointer');
+let intensityValueInput = getById('intensityValue');
+let warmnessValueInput = getById('warmnessValue');
+
+let colorPickerImage = getById('color-picker-image');
+let huePointer = getById('hue-pointer');
+let rgbHueInput = getById('rgbHue');
+let rgbValueInput = getById('rgbValue');
 
 // Function to update UI based on light mode selection
 function updateLightModeDisplay() {
@@ -36,25 +47,43 @@ function updateLightModeDisplay() {
     }
 }
 
+const lightModeInput = getById("lightMode");
+const fanSpeedInput = getById("fanSpeed");
 // Function to send control data (reads from updated elements)
 function sendControlData() {
-    const lightMode = getById("lightMode").value;
-    let url = "/control?";
+    const lightMode = lightModeInput.value;
+    const mac = deviceControlDiv.dataset.mac;
+    const device = registeredDevices[mac];
+    let url = "/control?address=" + mac + "&";
 
     if (lightMode === "main") {
-        const intensity = getById("intensityValue").value; // 1-16
-        const warmness = getById("warmnessValue").value;   // 0-255
+        const intensity = intensityValueInput.value; // 1-16
+        const warmness = warmnessValueInput.value;   // 0-255
         url += `mode=${lightMode}&bright=${intensity}&warm=${warmness}`;
+        device.light_mode = "main"
+        device.main_brightness = intensity
+        device.main_warmness = warmness
+        device.is_on = true
     } else if (lightMode === "rgb") {
-        const rgbHue = getById("rgbHue").value;     // 0-100
-        const rgbValue = getById("rgbValue").value; // 0-255 (brightness for RGB)
+        const rgbHue = rgbHueInput.value;     // 0-100
+        const rgbValue = rgbValueInput.value; // 0-255 (brightness for RGB)
         url += `mode=${lightMode}&hue=${rgbHue}&rgbValue=${rgbValue}`;
+        device.light_mode = "rgb"
+        device.ring_hue = rgbHue;
+        device.ring_brightness = rgbValue
+        device.is_on = true
     } else { // Off mode
         url += `mode=${lightMode}`;
+        device.is_on = false
     }
 
-    const fanSpeed = getById("fanSpeed").value;
+    const fanSpeed = fanSpeedInput.value;
+    device.fan_speed = fanSpeed
     url += `&fan=${fanSpeed}`;
+    registeredDevices[mac] = device;
+    const statusInfo = getById(`device-${mac.replace(/:/g, '')}`).querySelector(".status");
+    statusInfo.innerHTML = device.is_on ? "ON" : "OFF";
+    statusInfo.className = device.is_on ? "status-on" : "staus-off";
     performGet(url);
 }
 
@@ -88,7 +117,7 @@ const deviceSelectionOverlay = getById("device-selection-overlay");
 
 function openDeviceSelectionDialog() {
     deviceSelectionOverlay.classList.add("show");
-    // We'll add actual device search here in the next step
+    searchForDevices();
 }
 
 function closeDeviceSelectionDialog() {
@@ -111,7 +140,6 @@ function searchForDevices() {
     }));
 }
 
-
 const mainPage = getById("main");
 const registeredDevicesDiv = getById("registered-devices");
 const noDevicesSpan = getById("no-devices");
@@ -132,6 +160,7 @@ function reloadMainPage() {
         registeredDevicesDiv.innerHTML = "";
 
         const devices = JSON.parse(response)
+        registeredDevices = devices;
         if (devices.length === 0) {
             // If no devices are registered, show the "No devices configured yet." message
             noDevicesSpan.style.display = "block";
@@ -140,7 +169,7 @@ function reloadMainPage() {
             noDevicesSpan.style.display = "none";
 
             // Iterate over each device and create its HTML representation
-            devices.forEach(device => {
+            Object.values(devices).forEach(device => {
                 const deviceElement = document.createElement("div");
                 deviceElement.className = "registered-device-item"; // Add a class for CSS styling
                 // Give a unique ID for potential future targeting (e.g., controlling a specific device)
@@ -154,11 +183,10 @@ function reloadMainPage() {
                     <div class="data" data-mac="${device.mac_address}" data-name="${device.name}">
                         <h3>${device.name || "Unnamed Device"}</h3>
                         <p>MAC: ${device.mac_address}</p>
-                        <p>Status: <span class="${statusClass}">${isOnStatus}</span></p>
+                        <p>Status: <span class="status ${statusClass}">${isOnStatus}</span></p>
                     </div>
                     <div class="device-actions">
-                        <!-- <button class="control-device-btn" data-mac="${device.mac_address}">Control</button> -->
-                        <button class="remove-device-btn" data-mac="${device.mac_address}">Remove</button>
+                        <button class="remove-device-btn" data-mac="${device.mac_address}"><span class="button-text">Remove</span></button>
                     </div>
                 `;
                 registeredDevicesDiv.appendChild(deviceElement);
@@ -166,10 +194,7 @@ function reloadMainPage() {
                 deviceElement.querySelector(".data").addEventListener("click", (e) => {
                     const mac = e.currentTarget.dataset.mac;
                     const name = e.currentTarget.dataset.name;
-                    console.log(`Control button clicked for MAC: ${mac} (${name})`);
-                    deviceControlDiv.style.display = "block";
-                    currentDeviceTitleHeader.innerHTML = name;
-                    mainPage.style.display = "none";
+                    goToDeviceControlPage(mac, name);
                 });
 
                 deviceElement.querySelector(".remove-device-btn").addEventListener("click", (e) => {
@@ -182,6 +207,24 @@ function reloadMainPage() {
             });
         }
     });
+}
+
+function goToDeviceControlPage(mac, name) {
+    console.log(`Control button clicked for MAC: ${mac} (${name})`);
+    deviceControlDiv.style.display = "block";
+    mainPage.style.display = "none";
+    deviceControlDiv.dataset.mac = mac;
+    deviceControlDiv.dataset.name = name;
+    const device = registeredDevices[mac]
+    const isOn = device.is_on;
+    lightModeInput.value = isOn ? device.light_mode : "off";
+    fanSpeedInput.value = device.fan_speed;
+    warmnessValueInput.value = device.main_warmness;
+    intensityValueInput.value = device.main_brightness;
+    rgbHueInput.value = device.ring_hue;
+    rgbValueInput.value = device.ring_brightness;
+    currentDeviceTitleHeader.innerHTML = name;
+    updateLightModeDisplay();
 }
 
 function goHome() {
@@ -267,7 +310,6 @@ function lerpColor(color1, color2, t) {
 
 
 // --- RGB Ring Color Picker Logic (Mathematical) ---
-let colorPickerImage, huePointer, rgbHueInput, rgbValueInput;
 let isDraggingRgb = false;
 
 // Define the radial gradient properties for mathematical calculation
@@ -276,11 +318,6 @@ const _RGB_HUE_RING_RADIUS_RATIO = 0.5;    // Fully saturated hue ring ratio
 const _RGB_OUTER_RADIUS_RATIO = 1.0;       // Full outer radius (white)
 
 function initRgbPicker() {
-    colorPickerImage = getById('color-picker-image');
-    huePointer = getById('hue-pointer');
-    rgbHueInput = getById('rgbHue');
-    rgbValueInput = getById('rgbValue');
-
     // No need for offscreen canvas setup anymore
     console.log("RGB Color Picker Initialized (Mathematical).");
 
@@ -427,7 +464,6 @@ function endRgbDrag() {
 
 
 // --- Main Light Warmness/Intensity Picker Logic (Mathematical) ---
-let warmnessPickerImage, warmnessPointer, intensityValueInput, warmnessValueInput;
 let isDraggingWarmnessIntensity = false;
 
 // Define RGB values for the ends of the warmness spectrum
@@ -435,11 +471,6 @@ const COOL_WHITE_RGB = [255, 255, 255]; // #FFFFFF
 const WARM_YELLOW_RGB = [255, 241, 118]; // #FFF176F
 
 function initWarmnessIntensityPicker() {
-    warmnessPickerImage = getById('warmness-picker-image');
-    warmnessPointer = getById('warmness-pointer');
-    intensityValueInput = getById('intensityValue');
-    warmnessValueInput = getById('warmnessValue');
-
     // No need for offscreen canvas setup anymore
     console.log("Warmness/Intensity Picker Initialized (Mathematical).");
 

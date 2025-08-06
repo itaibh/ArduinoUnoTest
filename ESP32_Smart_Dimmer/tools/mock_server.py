@@ -102,25 +102,27 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             query_string = urlparse(self.path).query
             params = parse_qs(query_string)
 
-            device_id = params.get('device_id', [None])[0] # Assuming 'device_id' is the MAC address
+            address = params.get('address', [None])[0] # Assuming 'device_id' is the MAC address
 
-            log_message = f"[{time.ctime()}] Received control request for device_id: {device_id}\n"
+            log_message = f"[{time.ctime()}] Received control request for device_id: {address}\n"
             log_message += "  Parameters:\n"
             for key, value in params.items():
                 log_message += f"    {key}: {value[0] if value else 'N/A'}\n"
 
-            if device_id and device_id in registered_devices:
-                device_config = registered_devices[device_id]
+            if address and address in registered_devices:
+                device_config = registered_devices[address]
                 
                 # Update mock device state based on received parameters
                 if 'brightness' in params:
                     device_config['main_brightness'] = int(params['brightness'][0])
                 if 'mode' in params:
-                    device_config['light_mode'] = params['mode'][0]
+                    if (params['mode'][0] == "off"):
+                        device_config['is_on'] = "false"
+                    else:
+                        device_config['is_on'] = "true"
+                        device_config['light_mode'] = params['mode'][0] != "off"
                 if 'fan_speed' in params:
                     device_config['fan_speed'] = int(params['fan_speed'][0])
-                if 'isOn' in params:
-                    device_config['is_on'] = (params['isOn'][0].lower() == 'true')
                 if 'warmness' in params:
                     device_config['main_warmness'] = int(params['warmness'][0])
                 if 'hue' in params:
@@ -128,10 +130,10 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 if 'rgb_brightness' in params:
                     device_config['ring_brightness'] = int(params['rgb_brightness'][0])
                 
-                print(log_message + f"  Updated state for {device_id}: {device_config}")
+                print(log_message + f"  Updated state for {address}: {device_config}")
                 self.wfile.write(b"OK")
             else:
-                print(log_message + f"  Error: Device {device_id} not found in registered devices.")
+                print(log_message + f"  Error: Device {address} not found in registered devices.")
                 self.wfile.write(b"ERROR: Device not found.")
 
         # /get_all_devices: Return all registered (configured) devices
@@ -142,9 +144,9 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             
             # Convert the dictionary values to a list for JSON array response
-            devices_list = list(registered_devices.values())
-            self.wfile.write(json.dumps(devices_list).encode('utf-8'))
-            print(f"[{time.ctime()}] Responded to {self.path} with {len(devices_list)} registered devices.")
+            # devices_list = list(registered_devices.values())
+            self.wfile.write(json.dumps(registered_devices).encode('utf-8'))
+            print(f"[{time.ctime()}] Responded to {self.path} with {len(registered_devices)} registered devices.")
 
         # /add_device?: Register a new device with default settings
         elif self.path.startswith(ADD_DEVICE_PATH_PREFIX):
