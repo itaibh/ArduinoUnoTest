@@ -109,6 +109,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             for key, value in params.items():
                 log_message += f"    {key}: {value[0] if value else 'N/A'}\n"
 
+            lightMode = params['mode'][0]
             if address and address in registered_devices:
                 device_config = registered_devices[address]
                 
@@ -116,11 +117,11 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 if 'brightness' in params:
                     device_config['main_brightness'] = int(params['brightness'][0])
                 if 'mode' in params:
-                    if (params['mode'][0] == "off"):
+                    if (lightMode == "off"):
                         device_config['is_on'] = "false"
                     else:
                         device_config['is_on'] = "true"
-                        device_config['light_mode'] = params['mode'][0] != "off"
+                        device_config['light_mode'] = lightMode
                 if 'fan_speed' in params:
                     device_config['fan_speed'] = int(params['fan_speed'][0])
                 if 'warmness' in params:

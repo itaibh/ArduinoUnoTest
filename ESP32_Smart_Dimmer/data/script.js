@@ -81,9 +81,13 @@ function sendControlData() {
     device.fan_speed = fanSpeed
     url += `&fan=${fanSpeed}`;
     registeredDevices[mac] = device;
-    const statusInfo = getById(`device-${mac.replace(/:/g, '')}`).querySelector(".status");
-    statusInfo.innerHTML = device.is_on ? "ON" : "OFF";
-    statusInfo.className = device.is_on ? "status-on" : "staus-off";
+    const deviceInfoDiv = getById(`device-${mac.replace(/:/g, '')}`);
+    const lightStatusSpan = deviceInfoDiv.querySelector(".device-status>.light-status>span.status");
+    const fanStatusSpan = deviceInfoDiv.querySelector(".device-status>.fan-status>span.status");
+    lightStatusSpan.innerHTML = device.is_on ? lightMode : "off";
+    lightStatusSpan.className = device.is_on ? "status status-on" : "status staus-off";
+    fanStatusSpan.innerHTML = fanSpeeds[device.fan_speed];
+
     performGet(url);
 }
 
@@ -145,6 +149,7 @@ const registeredDevicesDiv = getById("registered-devices");
 const noDevicesSpan = getById("no-devices");
 const deviceControlDiv = getById("device-control");
 const currentDeviceTitleHeader = deviceControlDiv.querySelector(".title > h1");
+const fanSpeeds = ["Off", "Low", "Medium", "High"];
 function reloadMainPage() {
     // Clear previous content to avoid duplicates on reload
     registeredDevicesDiv.innerHTML = "";
@@ -176,14 +181,24 @@ function reloadMainPage() {
                 deviceElement.id = `device-${device.mac_address.replace(/:/g, '')}`;
 
                 // Determine ON/OFF status and apply a class for styling
-                const isOnStatus = device.is_on ? "ON" : "OFF";
-                const statusClass = device.is_on ? "status-on" : "status-off";
+                const isLightOnStatus = device.is_on ? "ON" : "OFF";
+                const lightMode = device.is_on ? device.light_mode : "off";
+                const lightStatusClass = device.is_on ? "status-on" : "status-off";
+                const fanStatus = fanSpeeds[device.fan_speed];
 
                 deviceElement.innerHTML = `
                     <div class="data" data-mac="${device.mac_address}" data-name="${device.name}">
                         <h3>${device.name || "Unnamed Device"}</h3>
                         <p>MAC: ${device.mac_address}</p>
-                        <p>Status: <span class="status ${statusClass}">${isOnStatus}</span></p>
+
+                        <div class="device-status">
+                            <div class="light-status">
+                                <span class="status ${lightStatusClass}">${lightMode}</span>
+                            </div>
+                            <div class="fan-status">
+                                <span class="status">${fanStatus}</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="device-actions">
                         <button class="remove-device-btn" data-mac="${device.mac_address}"><span class="button-text">Remove</span></button>

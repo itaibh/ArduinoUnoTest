@@ -423,3 +423,29 @@ select:focus {
 #cancel-device-selection:hover {
     background-color: #95a5a6;
 }
+
+.device-status {
+    display: flex;
+}
+
+.fan-status>.status::before {
+    content: "Fan: ";
+}
+
+.fan-status {
+    flex: 1;
+    text-transform: capitalize;
+}
+
+.light-status {
+    flex: 1;
+    text-transform: capitalize;
+}
+
+.light-status>.status:before {
+    content: "Light: ";
+}
+
+.registered-device-item > .data > h3 {
+    margin: 0;
+}
