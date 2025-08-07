@@ -25,15 +25,15 @@ uint8_t targetDeviceAddress[6] = {0xC9, 0xA3, 0x05, 0x36, 0xC4, 0x72};
 BluetoothManager btManager(targetDeviceAddress, "ESP32_Master_BT");
 LightController lightController(&btManager);
 FanController fanController(&btManager);
-HardwareInputHandler inputHandler(
-    &lightController,
-    &fanController,
-    ROTARY_ENCODER_CLK_PIN,
-    ROTARY_ENCODER_DT_PIN,
-    ROTARY_ENCODER_SW_PIN,
-    ROTARY_ENCODER_STEPS_PER_NOTCH,
-    FAN_SPEED_UP_BTN_PIN,
-    FAN_SPEED_DOWN_BTN_PIN);
+// HardwareInputHandler inputHandler(
+//     &lightController,
+//     &fanController,
+//     ROTARY_ENCODER_CLK_PIN,
+//     ROTARY_ENCODER_DT_PIN,
+//     ROTARY_ENCODER_SW_PIN,
+//     ROTARY_ENCODER_STEPS_PER_NOTCH,
+//     FAN_SPEED_UP_BTN_PIN,
+//     FAN_SPEED_DOWN_BTN_PIN);
 StorageHandler storageHandler(
     &btManager,
     &lightController,
@@ -44,7 +44,7 @@ WifiHandler wifiHandler;
 //   &lightController,
 //   &fanController);
 
-// WebServerModule *webServer = nullptr;
+WebServerModule *webServer = nullptr;
 
 void listSpiffsFiles()
 {
@@ -87,6 +87,7 @@ void setup()
     Serial.println("ESP32 Smart Dimmer Prototype Starting...");
 
     storageHandler.loadAllDeviceConfigs();
+    btManager.begin();
 
     // 1. Connect to WiFi or start configuration portal
     Serial.println("Attempting WiFi connection or starting AP for configuration...");
@@ -99,7 +100,7 @@ void setup()
     }
     else
     {
-        WebServerModule *webServer = new WebServerModule(
+        webServer = new WebServerModule(
             &storageHandler,
             &btManager,
             &lightController,
@@ -126,10 +127,10 @@ void setup()
     Serial.println("Setup complete.");
 }
 
-void loop()
-{
-    // Keep loop empty for now
-}
+// void loop()
+// {
+//     // Keep loop empty for now
+// }
 
 // void setup() {
 //   Serial.begin(115200);
@@ -159,24 +160,24 @@ void loop()
 //   Serial.println("Setup complete.");
 // }
 
-// void loop() {
+void loop() {
 
-//   // Only handle web clients if we are actually connected to STA WiFi
-//   if (wifiHandler.isConnected()) {
-//     webServer.handleClient();
-//   } else {
-//     // If not connected (e.g., in AP config mode), you could do other tasks
-//     // or just blink an LED to indicate awaiting config.
-//     // Serial.println("Waiting for WiFi configuration...");
-//     // You might want to blink an LED here to indicate AP mode
-//     delay(1000);  // Simple delay to prevent hammering serial, remove for real-time
-//   }
+  // Only handle web clients if we are actually connected to STA WiFi
+  if (wifiHandler.isConnected()) {
+    webServer->handleClient();
+  } else {
+    // If not connected (e.g., in AP config mode), you could do other tasks
+    // or just blink an LED to indicate awaiting config.
+    // Serial.println("Waiting for WiFi configuration...");
+    // You might want to blink an LED here to indicate AP mode
+    delay(1000);  // Simple delay to prevent hammering serial, remove for real-time
+  }
 
-//   // Update all components in the main loop.
-//   // Each component handles its own timing and state.
+  // Update all components in the main loop.
+  // Each component handles its own timing and state.
 //   btManager.update();
 //   inputHandler.update();
 //   storageHandler.tryStore();
 
-//   delay(5);  // Small delay for stability
-// }
+  delay(5);  // Small delay for stability
+}

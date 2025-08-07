@@ -360,10 +360,12 @@ std::map<String, BtDevice> BluetoothManager::scanForDevices()
             BTAdvertisedDevice *device_result = scanResults->getDevice(i);
             String name = device_result->getName().c_str();
             BTAddress address = device_result->getAddress();
-            Serial.printf("  - Found Device: %s, Address: %s\n", name.c_str(), address.toString().c_str());
-            if (address.toString().startsWith("C9:A3:05"))
+            String mac = address.toString();
+            mac.toUpperCase();
+            Serial.printf("  - Found Device: %s, Address: %s\n", name.c_str(), mac.c_str());
+            if (mac.startsWith("C9:A3:05"))
             {
-                foundDevices[address.toString()] = {name, address.toString()};
+                foundDevices[mac] = {name, mac};
             }
         }
     }

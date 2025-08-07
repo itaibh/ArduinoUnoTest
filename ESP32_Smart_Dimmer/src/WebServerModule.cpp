@@ -1,4 +1,5 @@
 #include "WebServerModule.h"
+#include "Utils.h"
 #include <SPIFFS.h>
 #include <functional>
 
@@ -90,13 +91,14 @@ void WebServerModule::handleFindDevices() {
             jsonResponse += ",";
         }
         firstDevice = false;
+        String deviceName = sanitizeString(btDevice.name);
 
         jsonResponse += "{";
-        jsonResponse += "\"name\":\"" + btDevice.name + "\",";
+        jsonResponse += "\"name\":\"" + deviceName + "\",";
         jsonResponse += "\"mac_address\":\"" + btDevice.address + "\",";
         
         bool isConfigured = configuredDevices.count(mac);
-        jsonResponse += ",\"is_configured\":";
+        jsonResponse += "\"is_configured\":";
         jsonResponse += isConfigured ? "true" : "false";
         
         jsonResponse += "}";
