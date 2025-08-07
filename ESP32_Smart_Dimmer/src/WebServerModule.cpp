@@ -227,28 +227,24 @@ void WebServerModule::handleControl() {
     }
 
     // Update the device's state based on query parameters
-    if (_server.hasArg("fan_speed")) {
-        currentConfig.fan_speed = _server.arg("fan_speed").toInt();
+    if (_server.hasArg("fan")) {
+        currentConfig.fan_speed = _server.arg("speed").toInt();
         fanCtrl->setSpeed(currentConfig.fan_speed);
     }
-    if (_server.hasArg("main_brightness")) {
-        currentConfig.main_brightness = _server.arg("main_brightness").toInt();
+    if (_server.hasArg("bright")) {
+        currentConfig.main_brightness = _server.arg("bright").toInt();
     }
-    if (_server.hasArg("main_warmness")) {
-        currentConfig.main_warmness = _server.arg("main_warmness").toInt();
+    if (_server.hasArg("warm")) {
+        currentConfig.main_warmness = _server.arg("warm").toInt();
     }
-    if (_server.hasArg("ring_hue")) {
-        currentConfig.ring_hue = _server.arg("ring_hue").toInt();
+    if (_server.hasArg("hue")) {
+        currentConfig.ring_hue = _server.arg("hue").toInt();
     }
-    if (_server.hasArg("ring_brightness")) {
-        currentConfig.ring_brightness = _server.arg("ring_brightness").toInt();
+    if (_server.hasArg("rgbValue")) {
+        currentConfig.ring_brightness = _server.arg("rgbValue").toInt();
     }
-    if (_server.hasArg("is_on")) {
-        String isOnStr = _server.arg("is_on");
-        currentConfig.is_on = (isOnStr == "true" || isOnStr == "1");
-    }
-    if (_server.hasArg("light_mode")) {
-        String lightModeArg = _server.arg("light_mode");
+    if (_server.hasArg("mode")) {
+        String lightModeArg = _server.arg("mode");
         if (lightModeArg == "off") {
             currentConfig.is_on = false;
         }

@@ -15,8 +15,8 @@ const uint8_t FAN_SPEED_DATA_PREFIX[] = {0x07, 0x0e, 0x03, 0x03};
 const int MIN_SEND_INTERVAL = 100; // give bluetooth time to digest...
 const int MAX_PACKET_SIZE = 128;
 
-BluetoothManager::BluetoothManager(uint8_t *targetAddress, const char *deviceName)
-    : targetDeviceAddress(targetAddress), espDeviceName(deviceName)
+BluetoothManager::BluetoothManager(const char *deviceName)
+    : espDeviceName(deviceName)
 {
     instance = this; // Set the static instance pointer
 }
@@ -33,27 +33,9 @@ void BluetoothManager::begin()
     SerialBT.register_callback(btCallback);
 }
 
-void BluetoothManager::update()
-{
-    if (!deviceConnected)
-    {
-        connectToServer();
-    }
-}
-
 bool BluetoothManager::isConnected()
 {
     return deviceConnected;
-}
-
-void BluetoothManager::connectToServer()
-{
-    Serial.println("Attempting to connect to target device...");
-    if (!SerialBT.connect(targetDeviceAddress))
-    {
-        Serial.println("Failed to initiate connection. Retrying in 5s...");
-        delay(5000);
-    }
 }
 
 void BluetoothManager::disconnect()
@@ -65,39 +47,46 @@ void BluetoothManager::disconnect()
 }
 
 // Connects to a specific device
-bool BluetoothManager::connectToDevice(const String &mac_address)
+bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
 {
     if (deviceConnected)
     {
-        if (connectedMacAddress == mac_address)
+        if (connectedMacAddress.equals(remoteAddress))
         {
             Serial.println("Already connected to this device.");
             return true;
         }
         disconnect();
     }
-
-    if (SerialBT.connect(mac_address))
+    // Serial.println("ending BT connection");
+    // SerialBT.end();
+    // Serial.println("beginning BT connection");
+    // SerialBT.begin(espDeviceName, true); // Master mode
+    if (SerialBT.connect(remoteAddress))
     {
         deviceConnected = true;
-        connectedMacAddress = mac_address;
+        connectedMacAddress = remoteAddress;
         if (connectionListener)
         {
-            connectionListener->onBluetoothConnected(connectedMacAddress);
+            connectionListener->onBluetoothConnected(connectedMacAddress.toString());
         }
-        Serial.printf("Successfully connected to: %s\n", mac_address.c_str());
+        Serial.printf("Successfully connected to: %s\n", remoteAddress.toString().c_str());
         return true;
     }
     else
     {
-        Serial.printf("Failed to connect to: %s\n", mac_address.c_str());
+        Serial.printf("Failed to connect to: %s\n", remoteAddress.toString().c_str());
         return false;
     }
 }
 
 bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
 {
-    if (!deviceConnected || connectedMacAddress != config.mac_address)
+    Serial.printf("sendConfigToDevice: deviceConnected: %s , connectedMacAddress: %s\n",
+                  deviceConnected ? "true" : "false", connectedMacAddress.toString().c_str());
+
+    BTAddress address(config.mac_address);
+    if (!deviceConnected || connectedMacAddress != address)
     {
         // Automatically try to connect if not connected to the right device
         if (!connectToDevice(config.mac_address))
@@ -344,6 +333,14 @@ bool BluetoothManager::waitForAck(const std::vector<CommandType> &expectedAckTyp
     return false;                                                                                           // Timeout or incorrect ACK type received
 }
 
+void BluetoothManager::clearInputBuffer()
+{
+    while (SerialBT.available())
+    {
+        SerialBT.read();
+    }
+}
+
 std::map<String, BtDevice> BluetoothManager::scanForDevices()
 {
     Serial.println("------------------------------------");
@@ -374,13 +371,5 @@ std::map<String, BtDevice> BluetoothManager::scanForDevices()
         Serial.println("No classic Bluetooth devices found.");
     }
 
-    if (scanResults != nullptr)
-    {
-        // delete scanResults;
-    }
-
-    //   if (!device_found) {
-    //      Serial.println("Target device not found during scan. Will retry in 30 seconds.");
-    //   }
     return foundDevices;
 }

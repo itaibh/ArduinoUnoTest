@@ -59,7 +59,7 @@ const String getDeviceNamespace(String mac_address)
     String macNoColons = mac_address;
     macNoColons.replace(":", "");
     // Use the full MAC address for namespace uniqueness
-    String prefNS = "devcfg_" + macNoColons;
+    String prefNS = "cfg" + macNoColons.substring(6);
     return prefNS;
 }
 

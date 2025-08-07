@@ -49,9 +49,9 @@ struct BtDevice
 class BluetoothManager
 {
 public:
-    BluetoothManager(uint8_t *targetAddress, const char *deviceName);
+    BluetoothManager(const char *deviceName);
     void begin();
-    void update(); // Handles connection logic
+    void clearInputBuffer();
     bool isConnected();
     void disconnect();
     void sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize);
@@ -62,15 +62,13 @@ public:
 
 private:
     BluetoothSerial SerialBT;
-    BTAddress targetDeviceAddress;
     const char *espDeviceName;
     bool deviceConnected = false;
-    String connectedMacAddress;
+    BTAddress connectedMacAddress;
     IBluetoothConnectionListener *connectionListener = nullptr;
     long lastSendTime;
 
-    bool connectToDevice(const String& mac_address);
-    void connectToServer();
+    bool connectToDevice(const BTAddress &remoteAddress);
     void handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 
     static void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);

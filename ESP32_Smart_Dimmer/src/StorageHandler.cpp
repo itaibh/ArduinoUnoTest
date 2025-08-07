@@ -148,6 +148,7 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 
     // Use the full MAC address for namespace uniqueness
     const char *prefNS = getDeviceNamespace(mac_address).c_str();
+    Serial.printf("StorageHandler: Restoring config for %s from NVS (namespace: %s)...\n", mac_address.c_str(), prefNS);
     preferences.begin(prefNS, true); // Open device namespace (read-only)
 
     // Check if namespace has data (e.g., if "fan_speed" key exists)
@@ -185,9 +186,9 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 // --- Public Method: Save a specific device's configuration to Preferences ---
 void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 {
-    Serial.printf("StorageHandler: Saving config for %s to Preferences...\n", config.mac_address.c_str());
-
     const char *prefNS = getDeviceNamespace(config.mac_address).c_str();
+    Serial.printf("StorageHandler: Saving config for %s to Preferences (namespace: %s)...\n", config.mac_address.c_str(), prefNS);
+
     preferences.begin(prefNS, false); // Open device namespace (read-write)
 
     // Write all current values for the config
@@ -210,6 +211,8 @@ void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
         lastSavedDeviceConfig = config; // Update the last saved state for the connected device
         lastSaveTime = millis();        // Record save time
     }
+
+    allManagedDevices[config.mac_address] = config;
 
     Serial.printf("StorageHandler: Saved %s config: Mode=%s, Brightness=%d, Fan=%d, IsOn=%d\n",
                   config.mac_address.c_str(), lightModeToString(config.light_mode).c_str(),

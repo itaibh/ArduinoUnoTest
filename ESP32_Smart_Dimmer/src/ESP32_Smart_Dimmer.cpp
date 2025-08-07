@@ -18,11 +18,11 @@ const int FAN_SPEED_DOWN_BTN_PIN = 23;
 const int ROTARY_ENCODER_STEPS_PER_NOTCH = 4;
 
 // --- Bluetooth Target ---
-uint8_t targetDeviceAddress[6] = {0xC9, 0xA3, 0x05, 0x36, 0xC4, 0x72};
+// uint8_t targetDeviceAddress[6] = {0xC9, 0xA3, 0x05, 0x36, 0xC4, 0x72};
 
 // --- Object Instantiation ---
 // Create the core components, passing dependencies via constructors.
-BluetoothManager btManager(targetDeviceAddress, "ESP32_Master_BT");
+BluetoothManager btManager("ESP32_Master_BT");
 LightController lightController(&btManager);
 FanController fanController(&btManager);
 // HardwareInputHandler inputHandler(
@@ -86,8 +86,9 @@ void setup()
     Serial.begin(115200);
     Serial.println("ESP32 Smart Dimmer Prototype Starting...");
 
-    storageHandler.loadAllDeviceConfigs();
     btManager.begin();
+
+    storageHandler.loadAllDeviceConfigs();
 
     // 1. Connect to WiFi or start configuration portal
     Serial.println("Attempting WiFi connection or starting AP for configuration...");
@@ -109,7 +110,8 @@ void setup()
         if (!webServer)
         { // Always check for failed allocation
             Serial.println("FATAL: Failed to allocate WebServerModule!");
-            while (true); // Halt
+            while (true)
+                ; // Halt
         }
 
         // WiFi is connected in STA mode
@@ -127,57 +129,22 @@ void setup()
     Serial.println("Setup complete.");
 }
 
-// void loop()
-// {
-//     // Keep loop empty for now
-// }
+void loop()
+{
+    // Only handle web clients if we are actually connected to STA WiFi
+    if (wifiHandler.isConnected())
+    {
+        webServer->handleClient();
+    }
+    else
+    {
+        // If not connected (e.g., in AP config mode), you could do other tasks
+        // or just blink an LED to indicate awaiting config.
+        // Serial.println("Waiting for WiFi configuration...");
+        // You might want to blink an LED here to indicate AP mode
+        delay(1000); // Simple delay to prevent hammering serial, remove for real-time
+    }
 
-// void setup() {
-//   Serial.begin(115200);
-//   Serial.println("ESP32 Smart Dimmer Prototype Starting...");
-
-//   // 1. Connect to WiFi or start configuration portal
-//   Serial.println("Attempting WiFi connection or starting AP for configuration...");
-//   if (!wifiHandler.connect()) {  // No arguments needed here!
-//     Serial.println("WiFi connection failed or configuration timed out.");
-//     Serial.println("Please connect to AP: 'SmartLight_SETUP' to configure WiFi.");
-//     // If it's in AP mode, the web server won't start on your home network IP.
-//     // You might want a simplified web server for the AP mode to show status.
-//   } else {
-//     // WiFi is connected in STA mode
-//     Serial.println("WiFi connected. Starting Web Server...");
-//     if (!webServer.begin()) {
-//       Serial.println("Web server failed to start.");
-//     } else {
-//       listSpiffsFiles();
-//     }
-//   }
-
-//   // Initialize all components
-//   btManager.begin();
-// //   inputHandler.begin();
-
-//   Serial.println("Setup complete.");
-// }
-
-void loop() {
-
-  // Only handle web clients if we are actually connected to STA WiFi
-  if (wifiHandler.isConnected()) {
-    webServer->handleClient();
-  } else {
-    // If not connected (e.g., in AP config mode), you could do other tasks
-    // or just blink an LED to indicate awaiting config.
-    // Serial.println("Waiting for WiFi configuration...");
-    // You might want to blink an LED here to indicate AP mode
-    delay(1000);  // Simple delay to prevent hammering serial, remove for real-time
-  }
-
-  // Update all components in the main loop.
-  // Each component handles its own timing and state.
-//   btManager.update();
-//   inputHandler.update();
-//   storageHandler.tryStore();
-
-  delay(5);  // Small delay for stability
+    btManager.clearInputBuffer();
+    delay(5); // Small delay for stability
 }
