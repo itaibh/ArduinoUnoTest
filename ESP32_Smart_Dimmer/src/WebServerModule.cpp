@@ -228,7 +228,7 @@ void WebServerModule::handleControl() {
 
     // Update the device's state based on query parameters
     if (_server.hasArg("fan")) {
-        currentConfig.fan_speed = _server.arg("speed").toInt();
+        currentConfig.fan_speed = _server.arg("fan").toInt();
         fanCtrl->setSpeed(currentConfig.fan_speed);
     }
     if (_server.hasArg("bright")) {
