@@ -146,7 +146,7 @@ void WebServerModule::handleGetAllDevices() {
     jsonResponse += "}";
 
     _server.send(200, "application/json", jsonResponse);
-    Serial.printf("Sent /get_all_devices response. Count: %d\n", devicesMap.size());
+    log_i("Sent /get_all_devices response. Count: %d\n", devicesMap.size());
 }
 
 /**
@@ -156,7 +156,7 @@ void WebServerModule::handleAddDevice() {
     String name = _server.arg("name");
     String address = _server.arg("address");
 
-    Serial.printf("Handling /add_device request. Name: %s, Address: %s\n", name.c_str(), address.c_str());
+    log_i("Handling /add_device request. Name: %s, Address: %s\n", name.c_str(), address.c_str());
 
     if (name.length() > 0 && address.length() > 0) {
         if (!storageHandler->isDeviceConfigured(address)) {
@@ -173,14 +173,14 @@ void WebServerModule::handleAddDevice() {
 
             storageHandler->saveSpecificDeviceConfig(newConfig);
             _server.send(200, "text/plain", "OK");
-            Serial.printf("Device %s (%s) added successfully.\n", name.c_str(), address.c_str());
+            log_i("Device %s (%s) added successfully.\n", name.c_str(), address.c_str());
         } else {
             _server.send(409, "text/plain", "Error: Device already configured.");
-            Serial.printf("Error: Device %s already configured.\n", address.c_str());
+            log_e("Error: Device %s already configured.\n", address.c_str());
         }
     } else {
         _server.send(400, "text/plain", "Error: Missing 'name' or 'address' parameters.");
-        Serial.println("Error: Missing 'name' or 'address' parameters.");
+        log_e("Error: Missing 'name' or 'address' parameters.");
     }
 }
 
@@ -190,19 +190,19 @@ void WebServerModule::handleAddDevice() {
 void WebServerModule::handleRemoveDevice() {
     String address = _server.arg("address");
 
-    Serial.printf("Handling /remove_device request for address: %s\n", address.c_str());
+    log_i("Handling /remove_device request for address: %s\n", address.c_str());
 
     if (address.length() > 0) {
         if (storageHandler->deleteDeviceConfig(address)) {
             _server.send(200, "text/plain", "OK");
-            Serial.printf("Device %s removed successfully.\n", address.c_str());
+            log_i("Device %s removed successfully.\n", address.c_str());
         } else {
             _server.send(404, "text/plain", "Error: Device not found.");
-            Serial.printf("Error: Device %s not found in storage.\n", address.c_str());
+            log_e("Error: Device %s not found in storage.\n", address.c_str());
         }
     } else {
         _server.send(400, "text/plain", "Error: Missing 'address' parameter.");
-        Serial.println("Error: Missing 'address' parameter.");
+        log_e("Error: Missing 'address' parameter.");
     }
 }
 

@@ -1,6 +1,7 @@
 #ifndef STORAGE_HANDLER_H
 #define STORAGE_HANDLER_H
 #include <Preferences.h>
+#include <Arduino.h>
 #include <map>    // Required for std::map
 #include <vector> // Required for std::vector (used in MAC list parsing)
 
@@ -41,6 +42,7 @@ public:
     void onLightControllerChange(LightMode light_mode, int main_brightness, int main_warmness, int ring_brightness, int ring_hue);
     void onFanControllerChange(int fan_speed);
 
+    void listNvsData();
 private:
     BluetoothManager *btManager;
     LightController *lightCtrl;

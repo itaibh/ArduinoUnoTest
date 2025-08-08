@@ -8,6 +8,7 @@
 #include "FanController.h"
 #include "HardwareInputHandler.h"
 #include "StorageHandler.h"
+#include "Utils.h"
 
 // --- Pin Definitions ---
 const int ROTARY_ENCODER_CLK_PIN = 18;
@@ -86,8 +87,16 @@ void setup()
     Serial.begin(115200);
     Serial.println("ESP32 Smart Dimmer Prototype Starting...");
 
+    String testAddress="C9:a3:05:36:c4:72";
+    DeviceConfig testConf;
+    testConf.mac_address = testAddress;
+    String prefNS = getDeviceNamespace(testAddress);
+
+    Serial.printf("test: %s namespace: %s / %s\n", testConf.mac_address.c_str(), prefNS , prefNS.c_str());
+
     btManager.begin();
 
+    storageHandler.listNvsData();
     storageHandler.loadAllDeviceConfigs();
 
     // 1. Connect to WiFi or start configuration portal

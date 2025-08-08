@@ -56,10 +56,14 @@ LightMode stringToLightMode(const String &modeStr)
 
 const String getDeviceNamespace(String mac_address)
 {
+    log_i("mac_address: %s", mac_address.c_str());
     String macNoColons = mac_address;
     macNoColons.replace(":", "");
+    log_i("macNoColons: %s", macNoColons.c_str());
     // Use the full MAC address for namespace uniqueness
-    String prefNS = "cfg" + macNoColons.substring(6);
+    String prefNS = "CFG" + macNoColons.substring(6);
+    prefNS.toUpperCase();
+    log_i("prefNS: %s", prefNS.c_str());
     return prefNS;
 }
 

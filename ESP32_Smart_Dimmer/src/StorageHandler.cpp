@@ -1,6 +1,8 @@
 #include "StorageHandler.h"
 #include "Utils.h"
 #include <Arduino.h> // Ensure Arduino core functions like millis() are available
+#include <nvs.h>
+#include <nvs_flash.h>
 
 // Use unsigned long for timestamps to avoid rollover issues after ~50 days
 const unsigned long DEBOUNCE_DELAY_MS = 2000;    // Wait 2 seconds of inactivity before saving a connected device
@@ -81,7 +83,9 @@ std::vector<String> StorageHandler::_loadMacsFromMasterList()
         {
             break;
         }
-        macs.push_back(macsString.substring(0, commaIndex));
+        String mac = macsString.substring(0, commaIndex);
+        macs.push_back(mac);
+        Serial.println(mac);
         macsString.remove(0, commaIndex + 1);
     }
     return macs;
@@ -144,12 +148,13 @@ void StorageHandler::_removeMacFromMasterList(const String &mac_address)
 DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 {
     DeviceConfig config;
+    mac_address.toUpperCase();
     config.mac_address = mac_address; // Always set MAC for the config being restored
 
     // Use the full MAC address for namespace uniqueness
-    const char *prefNS = getDeviceNamespace(mac_address).c_str();
-    Serial.printf("StorageHandler: Restoring config for %s from NVS (namespace: %s)...\n", mac_address.c_str(), prefNS);
-    preferences.begin(prefNS, true); // Open device namespace (read-only)
+    String prefNS = getDeviceNamespace(mac_address);
+    Serial.printf("StorageHandler: Restoring config for %s from NVS (namespace: %s / %s)...\n", mac_address, prefNS, prefNS.c_str());
+    preferences.begin(prefNS.c_str(), true); // Open device namespace (read-only)
 
     // Check if namespace has data (e.g., if "fan_speed" key exists)
     if (preferences.isKey("fan_speed"))
@@ -162,12 +167,12 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
         config.ring_hue = preferences.getUChar("ring_hue", 0);
         config.ring_brightness = preferences.getUChar("ring_brightness", 0);
         config.is_on = preferences.getBool("is_on", false); // Read isOn
-        Serial.printf("StorageHandler: Restored config for %s from NVS.\n", mac_address.c_str());
+        Serial.printf("StorageHandler: Restored config for %s from NVS.\n", mac_address);
     }
     else
     {
         // If no existing config, initialize with defaults
-        Serial.printf("StorageHandler: No existing config for %s, initializing with defaults.\n", mac_address.c_str());
+        Serial.printf("StorageHandler: No existing config for %s, initializing with defaults.\n", mac_address);
         config.name = "Unnamed";
         config.fan_speed = 0;
         config.light_mode = LightMode::MAIN_LIGHT;
@@ -186,10 +191,10 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 // --- Public Method: Save a specific device's configuration to Preferences ---
 void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 {
-    const char *prefNS = getDeviceNamespace(config.mac_address).c_str();
+    String prefNS = getDeviceNamespace(config.mac_address);
     Serial.printf("StorageHandler: Saving config for %s to Preferences (namespace: %s)...\n", config.mac_address.c_str(), prefNS);
 
-    preferences.begin(prefNS, false); // Open device namespace (read-write)
+    preferences.begin(prefNS.c_str(), false); // Open device namespace (read-write)
 
     // Write all current values for the config
     preferences.putString("name", config.name);
@@ -351,5 +356,30 @@ void StorageHandler::tryStore()
         saveSpecificDeviceConfig(currentConfig);
         // The `saveSpecificDeviceConfig` method will now also update `lastSavedDeviceConfig`
         // and `lastSaveTime` if the saved config is for the `currentConnectedMac`.
+    }
+}
+
+void StorageHandler::listNvsData(){
+    nvs_flash_init();
+
+    // Iterator for namespaces
+    nvs_iterator_t namespace_it = nvs_entry_find("nvs", NULL, NVS_TYPE_ANY);
+    
+    while (namespace_it != NULL) {
+        nvs_entry_info_t info;
+        nvs_entry_info(namespace_it, &info);
+        Serial.printf("Namespace: %s\n", info.namespace_name);
+
+        // Separate iterator for keys within the current namespace
+        nvs_iterator_t key_it = nvs_entry_find("nvs", info.namespace_name, NVS_TYPE_ANY);
+
+        // while (key_it != NULL) {
+        //     nvs_entry_info_t key_info;
+        //     nvs_entry_info(key_it, &key_info);
+        //     Serial.printf("  Key: %s, Type: %d\n", key_info.key, key_info.type);
+        //     key_it = nvs_entry_next(key_it);
+        // }
+
+        namespace_it = nvs_entry_next(namespace_it);
     }
 }
