@@ -21,29 +21,29 @@ StorageHandler::StorageHandler(BluetoothManager *bt, LightController *lc, FanCon
 // --- Public Method: Load all device configurations from Preferences ---
 void StorageHandler::loadAllDeviceConfigs()
 {
-    Serial.println("StorageHandler: Loading all device configurations from Preferences...");
+    log_i("Loading all device configurations from Preferences...");
     allManagedDevices.clear(); // Clear any existing in-memory data
 
-    std::vector<String> macAddresses = _loadMacsFromMasterList();
+    std::vector<String>* macAddresses = _loadMacsFromMasterList();
 
-    if (macAddresses.empty())
+    if (macAddresses->empty())
     {
-        Serial.println("StorageHandler: No device MACs found in master list.");
+        log_i("No device MACs found in master list.");
         return;
     }
 
-    for (const String &mac : macAddresses)
+    for (const String &mac : *macAddresses)
     {
         DeviceConfig config = _restoreSingleDevice(mac);
         if (!config.mac_address.isEmpty())
         { // Check if restore was successful (i.e., it found a MAC)
             allManagedDevices[mac] = config;
-            Serial.printf("  Loaded config for %s: Mode=%s, Brightness=%d, IsOn=%d\n",
+            log_i("  Loaded config for %s: Mode=%s, Brightness=%d, IsOn=%d",
                           mac.c_str(), lightModeToString(config.light_mode).c_str(),
                           config.main_brightness, config.is_on);
         }
     }
-    Serial.printf("StorageHandler: Finished loading %d devices into memory.\n", allManagedDevices.size());
+    log_i("Finished loading %d devices into memory.", allManagedDevices.size());
 }
 
 // --- Public Method: Get a specific device's configuration ---
@@ -68,9 +68,9 @@ std::map<String, DeviceConfig> StorageHandler::getAllManagedDevices()
 /**
  * Loads the master list of MAC addresses from NVS.
  */
-std::vector<String> StorageHandler::_loadMacsFromMasterList()
+std::vector<String>* StorageHandler::_loadMacsFromMasterList()
 {
-    std::vector<String> macs;
+    std::vector<String>* macs = new std::vector<String>();
     preferences.begin("master_list", true);
     String macsString = preferences.getString("mac_addresses", "");
     preferences.end();
@@ -84,9 +84,10 @@ std::vector<String> StorageHandler::_loadMacsFromMasterList()
             break;
         }
         String mac = macsString.substring(0, commaIndex);
-        macs.push_back(mac);
+        macs->push_back(mac);
         Serial.println(mac);
         macsString.remove(0, commaIndex + 1);
+        log_i("loaded %s", mac);
     }
     return macs;
 }
@@ -96,28 +97,33 @@ std::vector<String> StorageHandler::_loadMacsFromMasterList()
  */
 void StorageHandler::_addMacToMasterList(const String &mac_address)
 {
-    std::vector<String> macs = _loadMacsFromMasterList();
+    String mac_addr = mac_address;
+    mac_addr.toUpperCase();
+    std::vector<String>* macs = _loadMacsFromMasterList();
     bool found = false;
-    for (const String &mac : macs)
+    for (const String &mac : *macs)
     {
-        if (mac == mac_address)
+        if (mac.equalsIgnoreCase(mac_addr))
         {
             found = true;
+            log_i("mac already in master list: %s", mac_addr);
             break;
         }
     }
     if (!found)
     {
-        macs.push_back(mac_address);
+        macs->push_back(mac_addr);
         String macsString = "";
-        for (const String &mac : macs)
+        for (const String &mac : *macs)
         {
             macsString += mac + ",";
         }
+        log_i("added mac to master list: %s (storing mac_addresses = %s)", mac_addr, macsString);
         preferences.begin("master_list", false);
         preferences.putString("mac_addresses", macsString);
         preferences.end();
     }
+    delete macs;
 }
 
 /**
@@ -125,23 +131,26 @@ void StorageHandler::_addMacToMasterList(const String &mac_address)
  */
 void StorageHandler::_removeMacFromMasterList(const String &mac_address)
 {
-    std::vector<String> macs = _loadMacsFromMasterList();
-    for (size_t i = 0; i < macs.size(); ++i)
+    String mac_addr = mac_address;
+    std::vector<String>* macs = _loadMacsFromMasterList();
+    for (size_t i = 0; i < macs->size(); ++i)
     {
-        if (macs[i] == mac_address)
+        if ((*macs)[i].equalsIgnoreCase(mac_addr))
         {
-            macs.erase(macs.begin() + i);
+            macs->erase(macs->begin() + i);
             break;
         }
     }
     String macsString = "";
-    for (const String &mac : macs)
+    for (const String &mac : *macs)
     {
         macsString += mac + ",";
     }
+    log_i("removed mac from master list: %s (storing mac_addresses = %s)", mac_addr, macsString);
     preferences.begin("master_list", false);
     preferences.putString("mac_addresses", macsString);
     preferences.end();
+    delete macs;
 }
 
 // --- Private Helper: Restore (load) a single device's config from Preferences ---
@@ -191,37 +200,38 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 // --- Public Method: Save a specific device's configuration to Preferences ---
 void StorageHandler::saveSpecificDeviceConfig(const DeviceConfig &config)
 {
-    String prefNS = getDeviceNamespace(config.mac_address);
-    Serial.printf("StorageHandler: Saving config for %s to Preferences (namespace: %s)...\n", config.mac_address.c_str(), prefNS);
+    DeviceConfig conf = config; // Use local variable to avoid memory issues
+    String prefNS = getDeviceNamespace(conf.mac_address);
+    log_i("StorageHandler: Saving config for %s to Preferences (namespace: %s)...\n", conf.mac_address.c_str(), prefNS);
 
     preferences.begin(prefNS.c_str(), false); // Open device namespace (read-write)
 
     // Write all current values for the config
-    preferences.putString("name", config.name);
-    preferences.putUChar("fan_speed", config.fan_speed);
-    preferences.putInt("light_mode", static_cast<int>(config.light_mode));
-    preferences.putUChar("main_brightness", config.main_brightness);
-    preferences.putUChar("main_warmness", config.main_warmness);
-    preferences.putUChar("ring_hue", config.ring_hue);
-    preferences.putUChar("ring_brightness", config.ring_brightness);
-    preferences.putBool("is_on", config.is_on); // Save isOn
+    preferences.putString("name", conf.name);
+    preferences.putUChar("fan_speed", conf.fan_speed);
+    preferences.putInt("light_mode", static_cast<int>(conf.light_mode));
+    preferences.putUChar("main_brightness", conf.main_brightness);
+    preferences.putUChar("main_warmness", conf.main_warmness);
+    preferences.putUChar("ring_hue", conf.ring_hue);
+    preferences.putUChar("ring_brightness", conf.ring_brightness);
+    preferences.putBool("is_on", conf.is_on); // Save isOn
 
     preferences.end(); // Close device namespace
 
-    _addMacToMasterList(config.mac_address); // Ensure MAC is in the master list
+    _addMacToMasterList(conf.mac_address); // Ensure MAC is in the master list
 
     // If the saved config is for the currently connected device, update its 'lastSavedDeviceConfig'
-    if (config.mac_address == currentConnectedMac)
+    if (conf.mac_address.equalsIgnoreCase(currentConnectedMac))
     {
-        lastSavedDeviceConfig = config; // Update the last saved state for the connected device
+        lastSavedDeviceConfig = conf; // Update the last saved state for the connected device
         lastSaveTime = millis();        // Record save time
     }
 
-    allManagedDevices[config.mac_address] = config;
+    allManagedDevices[conf.mac_address] = conf;
 
     Serial.printf("StorageHandler: Saved %s config: Mode=%s, Brightness=%d, Fan=%d, IsOn=%d\n",
-                  config.mac_address.c_str(), lightModeToString(config.light_mode).c_str(),
-                  config.main_brightness, config.fan_speed, config.is_on);
+                  conf.mac_address.c_str(), lightModeToString(conf.light_mode).c_str(),
+                  conf.main_brightness, conf.fan_speed, conf.is_on);
 }
 
 /**

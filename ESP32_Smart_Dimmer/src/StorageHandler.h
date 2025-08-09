@@ -68,6 +68,6 @@ private:
     // Private helpers to manage the master list of MAC addresses in Preferences
     void _addMacToMasterList(const String &mac_address);
     void _removeMacFromMasterList(const String &mac_address);
-    std::vector<String> _loadMacsFromMasterList();
+    std::vector<String>* _loadMacsFromMasterList();
 };
 #endif // STORAGE_HANDLER_H
