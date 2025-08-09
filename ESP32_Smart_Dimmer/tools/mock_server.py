@@ -77,11 +77,11 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         # /discover_devices: Simulate Bluetooth scan results
         if self.path == DEVICE_DISCOVERY_PATH:
+            time.sleep(4) # simulate 4 seconds search time
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*') # Allow CORS for your HTML page
             self.end_headers()
-
             # Add 'is_configured' flag to mock discovered devices based on registered_devices
             response_devices = []
             for device in mock_discovered_devices:
