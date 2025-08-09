@@ -76,9 +76,27 @@ void WebServerModule::handleRoot() {
  * Returns a JSON array of discovered Bluetooth devices.
  */
 void WebServerModule::handleFindDevices() {
-    Serial.println("Handling /discover_devices request - performing Bluetooth scan.");
+    log_i("Handling /discover_devices request - performing Bluetooth scan.");
+    btManager->scanForDevices(&WebServerModule::_onDeviceListReady, this);
+}
 
-    std::map<String, BtDevice> scannedDevices = btManager->scanForDevices();
+void WebServerModule::_onDeviceListReady(std::map<String, BtDevice> scannedDevices, void* context) {
+    log_i("enter");
+    // Cast the void* context pointer back to a WebServerModule instance pointer.
+    WebServerModule* instance = static_cast<WebServerModule*>(context);
+    
+    // Now you can safely call the non-static member function on that instance.
+    if (instance) {
+        log_i("calling onDeviceListReady with %d devices", scannedDevices.size());
+        instance->onDeviceListReady(scannedDevices);
+    }
+}
+
+void WebServerModule::onDeviceListReady(std::map<String, BtDevice> scannedDevices) {
+    if (storageHandler == nullptr) {
+        log_e("storage handler is null");
+        return;
+    }
     const auto& configuredDevices = storageHandler->getAllManagedDevices();
 
     String jsonResponse = "[";
@@ -106,7 +124,7 @@ void WebServerModule::handleFindDevices() {
     jsonResponse += "]";
 
     _server.send(200, "application/json", jsonResponse);
-    Serial.printf("Sent /discover_devices response. Count: %d\n", scannedDevices.size());
+    log_i("Sent /discover_devices response. Count: %d", scannedDevices.size());
 }
 
 /**

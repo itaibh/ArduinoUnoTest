@@ -53,7 +53,7 @@ bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
     {
         if (connectedMacAddress.equals(remoteAddress))
         {
-            Serial.println("Already connected to this device.");
+            log_i("Already connected to this device.");
             return true;
         }
         disconnect();
@@ -66,32 +66,32 @@ bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
     {
         deviceConnected = true;
         connectedMacAddress = remoteAddress;
-        if (connectionListener)
-        {
-            connectionListener->onBluetoothConnected(connectedMacAddress.toString());
-        }
-        Serial.printf("Successfully connected to: %s\n", remoteAddress.toString().c_str());
+        // if (connectionListener)
+        // {
+        //     connectionListener->onBluetoothConnected(connectedMacAddress.toString());
+        // }
+        log_i("Successfully connected to: %s", remoteAddress.toString().c_str());
         return true;
     }
     else
     {
-        Serial.printf("Failed to connect to: %s\n", remoteAddress.toString().c_str());
+        log_w("Failed to connect to: %s", remoteAddress.toString().c_str());
         return false;
     }
 }
 
 bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
 {
-    Serial.printf("sendConfigToDevice: deviceConnected: %s , connectedMacAddress: %s\n",
-                  deviceConnected ? "true" : "false", connectedMacAddress.toString().c_str());
+    log_i("deviceConnected: %s , connectedMacAddress: %s",
+          deviceConnected ? "true" : "false", connectedMacAddress.toString().c_str());
 
     BTAddress address(config.mac_address);
-    if (!deviceConnected || connectedMacAddress != address)
+    if (!deviceConnected || !connectedMacAddress.equals(address))
     {
         // Automatically try to connect if not connected to the right device
         if (!connectToDevice(config.mac_address))
         {
-            Serial.println("Failed to connect for sending command.");
+            log_w("Failed to connect for sending command.");
             return false;
         }
     }
@@ -214,25 +214,30 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
 {
     uint8_t receivedBytes[MAX_PACKET_SIZE];
     int bytesRead = 0;
+    BTAddress mac(param->srv_open.rem_bda);
 
     switch (event)
     {
     case ESP_SPP_OPEN_EVT:
-        Serial.printf("[millis: %ld] Target device connected successfully!\n", millis());
+        log_i("Target device connected successfully. mac: %s", mac.toString().c_str());
         deviceConnected = true;
-        if (connectionListener != nullptr)
-        {
-            char bda_str[18];
-            uint8_t *bda = param->srv_open.rem_bda; // Connected device's MAC address
-            sprintf(bda_str, "%02X:%02X:%02X:%02X:%02X:%02X", bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
-            delay(200);
-            connectionListener->onBluetoothConnected(String(bda_str));
-        }
+        // if (connectionListener != nullptr)
+        // {
+        //     char bda_str[18];
+        //     uint8_t *bda = param->srv_open.rem_bda; // Connected device's MAC address
+        //     sprintf(bda_str, "%02X:%02X:%02X:%02X:%02X:%02X", bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
+        //     delay(200);
+        //     connectionListener->onBluetoothConnected(String(bda_str));
+        // }
         break;
     case ESP_SPP_CLOSE_EVT:
-        Serial.printf("[millis: %ld] Target device disconnected.\n", millis());
+        log_i("Target device disconnected. mac: %s", mac.toString().c_str());
         // You might want an onBluetoothDisconnected callback here too
         deviceConnected = false;
+
+        if (onDeviceDisconnected) {
+            (this->*onDeviceDisconnected)();
+        }
         break;
     case ESP_SPP_DATA_IND_EVT:
         /*
@@ -341,17 +346,31 @@ void BluetoothManager::clearInputBuffer()
     }
 }
 
-std::map<String, BtDevice> BluetoothManager::scanForDevices()
+void BluetoothManager::scanForDevices_()
 {
+    log_i("callback - calling scanForDevices");
+    scanForDevices(onDevicesListReady, this);
+}
+
+void BluetoothManager::scanForDevices(DevicesListReady callback, void* context)
+{
+    if (deviceConnected)
+    {
+        onDevicesListReady = callback;
+        onDeviceDisconnected = &BluetoothManager::scanForDevices_;
+        disconnect();
+        return;
+    }
+
     Serial.println("------------------------------------");
     Serial.println("Scanning for devices (10 seconds)...");
 
     BTScanResults *scanResults = SerialBT.discover(10000);
 
-    std::map<String, BtDevice> foundDevices;
+    std::map<String, BtDevice>* foundDevices = new std::map<String, BtDevice>();
     if (scanResults != nullptr && scanResults->getCount() > 0)
     {
-        Serial.printf("Found %d devices:\n", scanResults->getCount());
+        log_i("Found %d devices:\n", scanResults->getCount());
         for (int i = 0; i < scanResults->getCount(); i++)
         {
             BTAdvertisedDevice *device_result = scanResults->getDevice(i);
@@ -359,17 +378,23 @@ std::map<String, BtDevice> BluetoothManager::scanForDevices()
             BTAddress address = device_result->getAddress();
             String mac = address.toString();
             mac.toUpperCase();
-            Serial.printf("  - Found Device: %s, Address: %s\n", name.c_str(), mac.c_str());
+            log_i("  - Found Device: %s, Address: %s\n", name.c_str(), mac.c_str());
             if (mac.startsWith("C9:A3:05"))
             {
-                foundDevices[mac] = {name, mac};
+                (*foundDevices)[mac] = {name, mac};
             }
+        }
+
+        if (callback != nullptr)
+        {
+            log_i("calling callback with %d devices", foundDevices->size());
+            // Call the method using the pointer.
+            (*callback)(*foundDevices, this);
+            delete foundDevices;
         }
     }
     else
     {
-        Serial.println("No classic Bluetooth devices found.");
+        log_i("No classic Bluetooth devices found.");
     }
-
-    return foundDevices;
 }

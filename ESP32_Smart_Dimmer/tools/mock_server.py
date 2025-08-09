@@ -94,6 +94,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
 
         # /control?: Simulate controlling a specific device
         elif self.path.startswith(CONTROL_PATH_PREFIX):
+            time.sleep(1) # simulate 1 second round-trip time
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.send_header('Access-Control-Allow-Origin', '*') # Allow CORS

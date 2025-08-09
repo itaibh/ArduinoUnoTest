@@ -87,7 +87,7 @@ std::vector<String>* StorageHandler::_loadMacsFromMasterList()
         macs->push_back(mac);
         Serial.println(mac);
         macsString.remove(0, commaIndex + 1);
-        log_i("loaded %s", mac);
+        log_i("loaded %s", mac.c_str());
     }
     return macs;
 }
@@ -106,7 +106,7 @@ void StorageHandler::_addMacToMasterList(const String &mac_address)
         if (mac.equalsIgnoreCase(mac_addr))
         {
             found = true;
-            log_i("mac already in master list: %s", mac_addr);
+            log_i("mac already in master list: %s", mac_addr.c_str());
             break;
         }
     }
@@ -118,7 +118,7 @@ void StorageHandler::_addMacToMasterList(const String &mac_address)
         {
             macsString += mac + ",";
         }
-        log_i("added mac to master list: %s (storing mac_addresses = %s)", mac_addr, macsString);
+        log_i("added mac to master list: %s (storing mac_addresses = %s)", mac_addr.c_str(), macsString.c_str());
         preferences.begin("master_list", false);
         preferences.putString("mac_addresses", macsString);
         preferences.end();
@@ -146,7 +146,7 @@ void StorageHandler::_removeMacFromMasterList(const String &mac_address)
     {
         macsString += mac + ",";
     }
-    log_i("removed mac from master list: %s (storing mac_addresses = %s)", mac_addr, macsString);
+    log_i("removed mac from master list: %s (storing mac_addresses = %s)", mac_addr.c_str(), macsString.c_str());
     preferences.begin("master_list", false);
     preferences.putString("mac_addresses", macsString);
     preferences.end();
@@ -162,7 +162,7 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
 
     // Use the full MAC address for namespace uniqueness
     String prefNS = getDeviceNamespace(mac_address);
-    Serial.printf("StorageHandler: Restoring config for %s from NVS (namespace: %s / %s)...\n", mac_address, prefNS, prefNS.c_str());
+    log_i("Restoring config for %s from NVS (namespace: %s)...", mac_address.c_str(), prefNS.c_str());
     preferences.begin(prefNS.c_str(), true); // Open device namespace (read-only)
 
     // Check if namespace has data (e.g., if "fan_speed" key exists)
@@ -176,12 +176,12 @@ DeviceConfig StorageHandler::_restoreSingleDevice(String mac_address)
         config.ring_hue = preferences.getUChar("ring_hue", 0);
         config.ring_brightness = preferences.getUChar("ring_brightness", 0);
         config.is_on = preferences.getBool("is_on", false); // Read isOn
-        Serial.printf("StorageHandler: Restored config for %s from NVS.\n", mac_address);
+        log_i("Restored config for %s from NVS.", mac_address.c_str());
     }
     else
     {
         // If no existing config, initialize with defaults
-        Serial.printf("StorageHandler: No existing config for %s, initializing with defaults.\n", mac_address);
+        log_i("No existing config for %s, initializing with defaults.", mac_address.c_str());
         config.name = "Unnamed";
         config.fan_speed = 0;
         config.light_mode = LightMode::MAIN_LIGHT;

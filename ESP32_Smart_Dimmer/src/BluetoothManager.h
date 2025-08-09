@@ -46,9 +46,13 @@ struct BtDevice
     String address;
 };
 
+typedef void (*DevicesListReady)(std::map<String, BtDevice> foundDevices, void* context);
+
 class BluetoothManager
 {
 public:
+    typedef void (BluetoothManager::*DeviceDisconnectedEvent)();
+
     BluetoothManager(const char *deviceName);
     void begin();
     void clearInputBuffer();
@@ -58,7 +62,7 @@ public:
     bool sendConfigToDevice(const DeviceConfig &config);
     void registerConnectionListener(IBluetoothConnectionListener *listener);
     bool waitForAck(const std::vector<CommandType> &expectedAckTypes, unsigned long timeout_ms);
-    std::map<String, BtDevice> scanForDevices();
+    void scanForDevices(DevicesListReady callback, void* context);
 
 private:
     BluetoothSerial SerialBT;
@@ -70,7 +74,11 @@ private:
 
     bool connectToDevice(const BTAddress &remoteAddress);
     void handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+    void scanForDevices_();
 
+    DeviceDisconnectedEvent onDeviceDisconnected = nullptr;
+    DevicesListReady onDevicesListReady = nullptr;
+    
     static void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 
     volatile bool _ackReceived = false;       // Flag set by callback when ACK is parsed

@@ -18,14 +18,11 @@ const int FAN_SPEED_UP_BTN_PIN = 22;
 const int FAN_SPEED_DOWN_BTN_PIN = 23;
 const int ROTARY_ENCODER_STEPS_PER_NOTCH = 4;
 
-// --- Bluetooth Target ---
-// uint8_t targetDeviceAddress[6] = {0xC9, 0xA3, 0x05, 0x36, 0xC4, 0x72};
-
 // --- Object Instantiation ---
 // Create the core components, passing dependencies via constructors.
-BluetoothManager btManager("ESP32_Master_BT");
-LightController lightController(&btManager);
-FanController fanController(&btManager);
+BluetoothManager *btManager = nullptr;
+LightController *lightController = nullptr;
+FanController *fanController = nullptr;
 // HardwareInputHandler inputHandler(
 //     &lightController,
 //     &fanController,
@@ -35,16 +32,8 @@ FanController fanController(&btManager);
 //     ROTARY_ENCODER_STEPS_PER_NOTCH,
 //     FAN_SPEED_UP_BTN_PIN,
 //     FAN_SPEED_DOWN_BTN_PIN);
-StorageHandler storageHandler(
-    &btManager,
-    &lightController,
-    &fanController);
-WifiHandler wifiHandler;
-// WebServerModule webServer(
-//   &btManager,
-//   &lightController,
-//   &fanController);
-
+StorageHandler *storageHandler = nullptr; 
+WifiHandler *wifiHandler = nullptr;
 WebServerModule *webServer = nullptr;
 
 void listSpiffsFiles()
@@ -85,49 +74,49 @@ void listSpiffsFiles()
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("ESP32 Smart Dimmer Prototype Starting...");
+    log_i("ESP32 Smart Dimmer Prototype Starting...");
 
-    String testAddress="C9:a3:05:36:c4:72";
-    DeviceConfig testConf;
-    testConf.mac_address = testAddress;
-    String prefNS = getDeviceNamespace(testAddress);
+    btManager = new BluetoothManager("ESP32_Master_BT");
+    btManager->begin();
 
-    Serial.printf("test: %s namespace: %s / %s\n", testConf.mac_address.c_str(), prefNS , prefNS.c_str());
+    lightController = new LightController(btManager);
+    fanController = new FanController(btManager);
+    
+    storageHandler = new StorageHandler(btManager, lightController, fanController);
+    storageHandler->listNvsData();
+    storageHandler->loadAllDeviceConfigs();
 
-    btManager.begin();
-
-    storageHandler.listNvsData();
-    storageHandler.loadAllDeviceConfigs();
+    wifiHandler = new WifiHandler();
 
     // 1. Connect to WiFi or start configuration portal
-    Serial.println("Attempting WiFi connection or starting AP for configuration...");
-    if (!wifiHandler.connect())
+    log_i("Attempting WiFi connection or starting AP for configuration...");
+    if (!wifiHandler->connect())
     { // No arguments needed here!
-        Serial.println("WiFi connection failed or configuration timed out.");
-        Serial.println("Please connect to AP: 'SmartLight_SETUP' to configure WiFi.");
+        log_w("WiFi connection failed or configuration timed out.");
+        log_w("Please connect to AP: 'SmartLight_SETUP' to configure WiFi.");
         // If it's in AP mode, the web server won't start on your home network IP.
         // You might want a simplified web server for the AP mode to show status.
     }
     else
     {
         webServer = new WebServerModule(
-            &storageHandler,
-            &btManager,
-            &lightController,
-            &fanController);
+            storageHandler,
+            btManager,
+            lightController,
+            fanController);
 
         if (!webServer)
         { // Always check for failed allocation
-            Serial.println("FATAL: Failed to allocate WebServerModule!");
+            log_e("FATAL: Failed to allocate WebServerModule!");
             while (true)
                 ; // Halt
         }
 
         // WiFi is connected in STA mode
-        Serial.println("WiFi connected. Starting Web Server...");
+        log_i("WiFi connected. Starting Web Server...");
         if (!webServer->begin())
         {
-            Serial.println("Web server failed to start.");
+            log_e("Web server failed to start.");
         }
         else
         {
@@ -135,13 +124,13 @@ void setup()
         }
     }
     delay(100); // Give it some time
-    Serial.println("Setup complete.");
+    log_i("Setup complete.");
 }
 
 void loop()
 {
     // Only handle web clients if we are actually connected to STA WiFi
-    if (wifiHandler.isConnected())
+    if (wifiHandler->isConnected())
     {
         webServer->handleClient();
     }
@@ -154,6 +143,6 @@ void loop()
         delay(1000); // Simple delay to prevent hammering serial, remove for real-time
     }
 
-    btManager.clearInputBuffer();
+    btManager->clearInputBuffer();
     delay(5); // Small delay for stability
 }

@@ -50,6 +50,9 @@ function updateLightModeDisplay() {
     }
 }
 
+let currentlySendingControlData = false;
+let newControlDataWaiting = false;
+let waitingControlDataUrl = null;
 const lightModeInput = getById("lightMode");
 const fanSpeedInput = getById("fanSpeed");
 // Function to send control data (reads from updated elements)
@@ -61,7 +64,7 @@ function sendControlData() {
 
     if (lightMode === "main") {
         const intensity = intensityValueInput.value; // 1-16
-        const warmness = warmnessValueInput.value;   // 0-255
+        const warmness = 255 - warmnessValueInput.value;   // 0-255. it's reversed for some reason, lowest value is highest temprature
         url += `mode=${lightMode}&bright=${intensity}&warm=${warmness}`;
         device.light_mode = "main"
         device.main_brightness = intensity
@@ -91,10 +94,45 @@ function sendControlData() {
     lightStatusSpan.className = device.is_on ? "status status-on" : "status staus-off";
     fanStatusSpan.innerHTML = fanSpeeds[device.fan_speed];
 
-    performGet(url);
+    newControlDataWaiting = true;
+    waitingControlDataUrl = url;
+    if (currentlySendingControlData) return;
+    
+    sendNextControlData();
 }
 
-function performGet(url, callback) {
+// This function processes the queue of requests
+function sendNextControlData() {
+    // If there's no new data waiting, or we're already sending, just return
+    if (!newControlDataWaiting || currentlySendingControlData) {
+        return;
+    }
+
+    currentlySendingControlData = true;
+    newControlDataWaiting = false;
+    const urlToSend = waitingControlDataUrl;
+    waitingControlDataUrl = null;
+
+    performGet(urlToSend,
+        () => {
+            currentlySendingControlData = false;
+            if (newControlDataWaiting) {
+                // If new data came in while we were sending, send it now
+                sendNextControlData();
+            }
+        },
+        (error) => {
+            console.error("Failed to send control data:", error);
+            currentlySendingControlData = false;
+            if (newControlDataWaiting) {
+                // If new data came in while we were sending, send it now
+                sendNextControlData();
+            }
+        }
+    );
+}
+
+function performGet(url, callback, error) {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
     xhr.onreadystatechange = function () {
@@ -110,6 +148,9 @@ function performGet(url, callback) {
             } else {
                 responseDiv.className = "show error";
                 responseDiv.innerText = "Error: " + xhr.status + " " + xhr.statusText;
+                if (error) {
+                    error(xhr.responseText)
+                }
             }
             setTimeout(() => { responseDiv.className = ""; }, 3000);
         }

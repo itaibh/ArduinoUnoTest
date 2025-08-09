@@ -43,6 +43,9 @@ private:
     void handleAddDevice();
     void handleRemoveDevice();
 
+    static void _onDeviceListReady(std::map<String, BtDevice> scannedDevices, void* context);
+    void onDeviceListReady(std::map<String, BtDevice> scannedDevices);
+
     String getContentType(String filename);
 };
 
