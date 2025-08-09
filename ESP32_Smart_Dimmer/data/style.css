@@ -354,14 +354,24 @@ select:focus {
 }
 
 .search-indicator span {
-    animation: pulse 1.5s infinite ease-in-out;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  display: inline-block;
+  border-top: 3px solid #66a7ff;
+  border-right: 3px solid transparent;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;    
 }
 
-@keyframes pulse {
-    0% { opacity: 0.5; }
-    50% { opacity: 1; }
-    100% { opacity: 0.5; }
-}
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+} 
 
 #device-list-container {
     max-height: 200px;
@@ -411,7 +421,12 @@ select:focus {
     color: white;
 }
 
-#search-devices:hover {
+button#search-devices:disabled {
+    opacity: 0.6;
+    color: #aedeff;
+}
+
+#search-devices:not(:disabled):hover {
     background-color: #2980b9;
 }
 

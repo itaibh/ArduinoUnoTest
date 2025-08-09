@@ -15,6 +15,9 @@ let huePointer = getById('hue-pointer');
 let rgbHueInput = getById('rgbHue');
 let rgbValueInput = getById('rgbValue');
 
+let searchForDevicesBtn = getById('search-devices');
+let searchIndicator = getById('search-indicator');
+
 // Function to update UI based on light mode selection
 function updateLightModeDisplay() {
     const lightMode = getById("lightMode").value;
@@ -131,7 +134,8 @@ function closeDeviceSelectionDialog() {
 const deviceListContainer = getById("device-list-container");
 function searchForDevices() {
     let url = "/discover_devices";
-
+    searchForDevicesBtn.setAttribute("disabled", "disabled");
+    searchIndicator.style.display = "block";
     performGet(url, (responseText => {
         try {
             const devices = JSON.parse(responseText);
@@ -141,6 +145,8 @@ function searchForDevices() {
             deviceListContainer.innerHTML = '<div class="error-message">Error parsing device data.</div>';
             console.error("Error parsing JSON response:", e);
         }
+        searchForDevicesBtn.removeAttribute("disabled");
+        searchIndicator.style.display = "none";
     }));
 }
 
@@ -609,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach listener for add device button
     getById('add-device').addEventListener('click', openDeviceSelectionDialog);
     getById('search-devices-main').addEventListener('click', openDeviceSelectionDialog);
-    getById('search-devices').addEventListener('click', searchForDevices)
+    searchForDevicesBtn.addEventListener('click', searchForDevices)
     getById('back-to-main-menu').addEventListener('click', goHome)
     // Attach listener for modal cancel button
     getById('cancel-device-selection').addEventListener('click', closeDeviceSelectionDialog);
