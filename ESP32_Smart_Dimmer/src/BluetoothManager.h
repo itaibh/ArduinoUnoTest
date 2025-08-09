@@ -6,6 +6,8 @@
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include "DeviceConfig.h"
+#include "CommandType.h"
+#include "Utils.h"
 
 // Define constants for received packet parsing
 // These are based on your observed "BT Data Received" logs
@@ -17,17 +19,6 @@ const uint8_t RX_PACKET_FUNCTION_LIGHT = 0x1C; // Byte 6 for light status (assum
 // Indices for parsing received packets (0-indexed from start of 24-byte packet)
 const int RX_PACKET_FUNCTION_BYTE_IDX = 6;
 const int RX_PACKET_FAN_STATE_BYTE_IDX = 22; // For fan ON/OFF/Speed
-
-// Define command types for clarity
-enum CommandType
-{
-    CMD_NONE,
-    CMD_LIGHT_ON_OFF,
-    CMD_LIGHT_INTENSITY,
-    CMD_LIGHT_WARMNESS,
-    CMD_RGB,
-    CMD_FAN_SPEED
-};
 
 class IBluetoothConnectionListener
 {
@@ -78,7 +69,8 @@ private:
 
     DeviceDisconnectedEvent onDeviceDisconnected = nullptr;
     DevicesListReady onDevicesListReady = nullptr;
-    
+    void* onDevicesListReadyContext = nullptr;
+
     static void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 
     volatile bool _ackReceived = false;       // Flag set by callback when ACK is parsed

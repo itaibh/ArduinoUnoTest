@@ -19,7 +19,7 @@ LightMode LightController::getMode() {
 void LightController::turnOn() {
   if (!isOn) {
     isOn = true;
-    Serial.println("Light ON");
+    log_i("Light ON");
     uint8_t payload[] = { 0x01 };  // ON
     btManager->sendCommand(CMD_LIGHT_ON_OFF, payload, sizeof(payload));
   }
@@ -28,7 +28,7 @@ void LightController::turnOn() {
 void LightController::turnOff() {
   if (isOn) {
     isOn = false;
-    Serial.println("Light OFF");
+    log_i("Light OFF");
     uint8_t payload[] = { 0x02 };  // OFF
     btManager->sendCommand(CMD_LIGHT_ON_OFF, payload, sizeof(payload));
     invokeCallback();
@@ -37,7 +37,7 @@ void LightController::turnOff() {
 
 void LightController::toggle() {
   isOn = !isOn;
-  Serial.printf("Light Toggled: %s\n", isOn ? "ON" : "OFF");
+  log_i("Light Toggled: %s", isOn ? "ON" : "OFF");
   uint8_t payload[] = { isOn ? (uint8_t)0x01 : (uint8_t)0x02 };
   btManager->sendCommand(CMD_LIGHT_ON_OFF, payload, sizeof(payload));
 }
@@ -46,7 +46,7 @@ void LightController::setBrightness(int newBrightness, bool forceUpdate) {
   int oldBrightness = currentMode == MAIN_LIGHT ? brightnessMain : brightnessRing;
   *brightness = constrain(newBrightness, minIntensity, maxIntensity);
   if ((*brightness) != oldBrightness || forceUpdate) {
-    Serial.printf("Brightness set to: %d\n", *brightness);
+    log_i("Brightness set to: %d", *brightness);
     sendState();
   }
 }
@@ -71,7 +71,7 @@ void LightController::changeWarmness() {
     warmness = MIN_WARMNESS;
     warmnessStep = -warmnessStep;
   }
-  Serial.printf("Warmness changed to: %d\n", warmness);
+  log_i("Warmness changed to: %d", warmness);
   sendState();
 }
 
@@ -93,7 +93,7 @@ void LightController::switchMode() {
     maxIntensity = MAX_INTENSITY_MAIN;
     brightness = &brightnessMain;
   }
-  Serial.printf("Mode switched to: %s\n", (currentMode == MAIN_LIGHT) ? "Main Light" : "RGB Ring");
+  log_i("Mode switched to: %s", (currentMode == MAIN_LIGHT) ? "Main Light" : "RGB Ring");
   // Resend state to apply current settings to the new mode
   sendState();
   delay(10);  // Send twice for reliability with some devices
@@ -118,7 +118,7 @@ void LightController::sendState() {
 void LightController::sendRGBState() {
   int r, g, b;
   hslToRgb((float)hue / 100.0, 1.0, (float)brightnessRing / 255.0, &r, &g, &b);
-  Serial.printf("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)\n", r, g, b, hue, brightnessRing);
+  log_i("Ring RGB: %d, %d, %d (hue: %d, brightness: %d)", r, g, b, hue, brightnessRing);
 
   uint8_t payload[] = {
     (uint8_t)brightnessRing,

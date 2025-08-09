@@ -77,11 +77,12 @@ void WebServerModule::handleRoot() {
  */
 void WebServerModule::handleFindDevices() {
     log_i("Handling /discover_devices request - performing Bluetooth scan.");
+    log_i("context address: %p", this);
     btManager->scanForDevices(&WebServerModule::_onDeviceListReady, this);
 }
 
 void WebServerModule::_onDeviceListReady(std::map<String, BtDevice> scannedDevices, void* context) {
-    log_i("enter");
+    log_i("context: %p", context);
     // Cast the void* context pointer back to a WebServerModule instance pointer.
     WebServerModule* instance = static_cast<WebServerModule*>(context);
     
@@ -235,7 +236,7 @@ void WebServerModule::handleControl() {
         return;
     }
 
-    Serial.printf("Handling /control request for address: %s\n", address.c_str());
+    log_i("Handling /control request for address: %s", address.c_str());
 
     // Retrieve the device's current state from StorageHandler
     DeviceConfig currentConfig;

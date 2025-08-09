@@ -42,13 +42,14 @@ void BluetoothManager::disconnect()
 {
     if (!SerialBT.disconnect())
     {
-        Serial.println("Failed to disconnect.");
+        log_w("Failed to disconnect.");
     }
 }
 
 // Connects to a specific device
 bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
 {
+    log_i("remoteAddress: %s", remoteAddress.toString(true).c_str());
     if (deviceConnected)
     {
         if (connectedMacAddress.equals(remoteAddress))
@@ -58,24 +59,21 @@ bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
         }
         disconnect();
     }
-    // Serial.println("ending BT connection");
-    // SerialBT.end();
-    // Serial.println("beginning BT connection");
-    // SerialBT.begin(espDeviceName, true); // Master mode
+
     if (SerialBT.connect(remoteAddress))
     {
         deviceConnected = true;
         connectedMacAddress = remoteAddress;
-        // if (connectionListener)
-        // {
-        //     connectionListener->onBluetoothConnected(connectedMacAddress.toString());
-        // }
-        log_i("Successfully connected to: %s", remoteAddress.toString().c_str());
+        if (connectionListener)
+        {
+            connectionListener->onBluetoothConnected(connectedMacAddress.toString(true));
+        }
+        log_i("Successfully connected to: %s", remoteAddress.toString(true).c_str());
         return true;
     }
     else
     {
-        log_w("Failed to connect to: %s", remoteAddress.toString().c_str());
+        log_w("Failed to connect to: %s", remoteAddress.toString(true).c_str());
         return false;
     }
 }
@@ -83,7 +81,7 @@ bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
 bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
 {
     log_i("deviceConnected: %s , connectedMacAddress: %s",
-          deviceConnected ? "true" : "false", connectedMacAddress.toString().c_str());
+          deviceConnected ? "true" : "false", connectedMacAddress.toString(true).c_str());
 
     BTAddress address(config.mac_address);
     if (!deviceConnected || !connectedMacAddress.equals(address))
@@ -132,7 +130,7 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size
 {
     if (!deviceConnected)
     {
-        Serial.println("Cannot send command: Not connected.");
+        log_w("Cannot send command: Not connected.");
         return;
     }
 
@@ -144,6 +142,9 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size
     const uint8_t *cmdPrefix;
     size_t cmdPrefixSize;
     uint8_t finalPacketByte6 = 0x18; // Default value
+
+    String commandTypeName = commandTypeToString(cmd);
+    log_i("command: %s", commandTypeName.c_str());
 
     switch (cmd)
     {
@@ -169,7 +170,7 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size
         cmdPrefixSize = sizeof(FAN_SPEED_DATA_PREFIX);
         break;
     default:
-        Serial.println("Unknown command type.");
+        log_w("Unknown command type.");
         return;
     }
 
@@ -190,23 +191,18 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size
     memcpy(&packetBuffer[packetSize], BT_SUFFIX, sizeof(BT_SUFFIX));
     packetSize += sizeof(BT_SUFFIX);
 
+    log_i("create packet (size: %d)", packetSize);
+    String str = "Sending packet (HEX): ";
+    for (size_t i = 0; i < packetSize; i++)
+    {
+        str += String(packetBuffer[i], HEX);
+    }
+    log_i("%s", str.c_str());
+
     SerialBT.write(packetBuffer, packetSize);
     SerialBT.flush();
 
     lastSendTime = millis();
-
-    // Print to Serial Monitor as hex string
-    Serial.print("[millis: ");
-    Serial.print(millis());
-    Serial.print("] Sending packet (HEX): ");
-    for (size_t i = 0; i < packetSize; i++)
-    {
-        // Use Serial.printf for formatted output (two digits, leading zero if needed)
-        // or Serial.print(packetBuffer[i], HEX) and handle padding manually.
-        // printf is generally cleaner for this.
-        Serial.printf("%02X ", packetBuffer[i]);
-    }
-    Serial.println(); // Newline at the end for readability
 }
 
 // Member method to handle Bluetooth events
@@ -219,7 +215,7 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
     switch (event)
     {
     case ESP_SPP_OPEN_EVT:
-        log_i("Target device connected successfully. mac: %s", mac.toString().c_str());
+        log_i("Target device connected successfully. mac: %s", mac.toString(true).c_str());
         deviceConnected = true;
         // if (connectionListener != nullptr)
         // {
@@ -231,11 +227,12 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
         // }
         break;
     case ESP_SPP_CLOSE_EVT:
-        log_i("Target device disconnected. mac: %s", mac.toString().c_str());
+        log_i("Target device disconnected. mac: %s", mac.toString(true).c_str());
         // You might want an onBluetoothDisconnected callback here too
         deviceConnected = false;
 
-        if (onDeviceDisconnected) {
+        if (onDeviceDisconnected)
+        {
             (this->*onDeviceDisconnected)();
         }
         break;
@@ -348,15 +345,17 @@ void BluetoothManager::clearInputBuffer()
 
 void BluetoothManager::scanForDevices_()
 {
-    log_i("callback - calling scanForDevices");
-    scanForDevices(onDevicesListReady, this);
+    log_i("callback - calling scanForDevices, passing context address: %p", onDevicesListReadyContext);
+    scanForDevices(onDevicesListReady, onDevicesListReadyContext);
 }
 
-void BluetoothManager::scanForDevices(DevicesListReady callback, void* context)
+void BluetoothManager::scanForDevices(DevicesListReady callback, void *context)
 {
+    log_i("context: %p", context);
     if (deviceConnected)
     {
         onDevicesListReady = callback;
+        onDevicesListReadyContext = context;
         onDeviceDisconnected = &BluetoothManager::scanForDevices_;
         disconnect();
         return;
@@ -367,7 +366,7 @@ void BluetoothManager::scanForDevices(DevicesListReady callback, void* context)
 
     BTScanResults *scanResults = SerialBT.discover(10000);
 
-    std::map<String, BtDevice>* foundDevices = new std::map<String, BtDevice>();
+    std::map<String, BtDevice> *foundDevices = new std::map<String, BtDevice>();
     if (scanResults != nullptr && scanResults->getCount() > 0)
     {
         log_i("Found %d devices:\n", scanResults->getCount());
@@ -376,8 +375,7 @@ void BluetoothManager::scanForDevices(DevicesListReady callback, void* context)
             BTAdvertisedDevice *device_result = scanResults->getDevice(i);
             String name = device_result->getName().c_str();
             BTAddress address = device_result->getAddress();
-            String mac = address.toString();
-            mac.toUpperCase();
+            String mac = address.toString(true);
             log_i("  - Found Device: %s, Address: %s\n", name.c_str(), mac.c_str());
             if (mac.startsWith("C9:A3:05"))
             {
@@ -389,7 +387,7 @@ void BluetoothManager::scanForDevices(DevicesListReady callback, void* context)
         {
             log_i("calling callback with %d devices", foundDevices->size());
             // Call the method using the pointer.
-            (*callback)(*foundDevices, this);
+            (*callback)(*foundDevices, context);
             delete foundDevices;
         }
     }

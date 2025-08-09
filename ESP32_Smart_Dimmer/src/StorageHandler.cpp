@@ -266,7 +266,7 @@ bool StorageHandler::deleteDeviceConfig(const String &mac_address)
         preferences.begin(String("device_" + mac_address).c_str(), false);
         preferences.clear();
         preferences.end();
-        Serial.printf("Removed device %s from NVS.\n", mac_address.c_str());
+        log_i("Removed device %s from NVS.", mac_address.c_str());
         return true;
     }
     return false;
@@ -275,8 +275,16 @@ bool StorageHandler::deleteDeviceConfig(const String &mac_address)
 // --- Listener: On Bluetooth Connected ---
 void StorageHandler::onBluetoothConnected(String mac_address)
 {
-    Serial.printf("StorageHandler: Bluetooth connected to MAC: %s.\n", mac_address.c_str());
     currentConnectedMac = mac_address; // Store the currently connected MAC
+    log_i("Bluetooth connected to MAC: %s.", mac_address.c_str());
+    std::vector<String>* macAddresses = _loadMacsFromMasterList();
+    if (std::find(macAddresses->begin(), macAddresses->end(), mac_address) == macAddresses->end()){
+        log_w("mac address not in valid addresses list:");
+        for (size_t i = 0; i < macAddresses->size(); ++i) {
+            log_i("  %s", (*macAddresses)[i].c_str());
+        }
+        return;
+    }
 
     // Get (or create default) the DeviceConfig for this MAC address
     DeviceConfig configForConnectedDevice = _restoreSingleDevice(mac_address);
@@ -293,11 +301,11 @@ void StorageHandler::onBluetoothConnected(String mac_address)
                       configForConnectedDevice.main_warmness,
                       configForConnectedDevice.ring_brightness,
                       configForConnectedDevice.ring_hue);
-    Serial.println("[Debug] Light command sent to connected device.");
+    log_d("Light command sent to connected device.");
 
     delay(500); // Small delay before fan command
     fanCtrl->setSpeed(configForConnectedDevice.fan_speed);
-    Serial.println("[Debug] Fan command sent to connected device.");
+    log_d("Fan command sent to connected device.");
 
     // Reset change detection for the connected device as we just applied its config
     lastChangeDetectedTime = millis();
@@ -309,10 +317,10 @@ void StorageHandler::onLightControllerChange(LightMode light_mode, int main_brig
 {
     if (currentConnectedMac.isEmpty() || !allManagedDevices.count(currentConnectedMac))
     {
-        Serial.println("StorageHandler: Light change detected, but no device connected or managed for updates.");
+        log_w("Light change detected, but no device connected or managed for updates.");
         return;
     }
-    Serial.printf("StorageHandler: Light change detected for %s. Updating in-memory config.\n", currentConnectedMac.c_str());
+    log_i("Light change detected for %s. Updating in-memory config.", currentConnectedMac.c_str());
 
     DeviceConfig &currentConfig = allManagedDevices[currentConnectedMac]; // Get reference to modify
 
@@ -334,10 +342,10 @@ void StorageHandler::onFanControllerChange(int fan_speed)
 {
     if (currentConnectedMac.isEmpty() || !allManagedDevices.count(currentConnectedMac))
     {
-        Serial.println("StorageHandler: Fan change detected, but no device connected or managed for updates.");
+        log_w("StorageHandler: Fan change detected, but no device connected or managed for updates.");
         return;
     }
-    Serial.printf("StorageHandler: Fan change detected for %s. Updating in-memory config.\n", currentConnectedMac.c_str());
+    log_i("StorageHandler: Fan change detected for %s. Updating in-memory config.\n", currentConnectedMac.c_str());
 
     DeviceConfig &currentConfig = allManagedDevices[currentConnectedMac]; // Get reference to modify
     currentConfig.fan_speed = fan_speed;

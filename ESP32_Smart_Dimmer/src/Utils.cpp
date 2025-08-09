@@ -54,6 +54,19 @@ LightMode stringToLightMode(const String &modeStr)
     return LightMode::MAIN_LIGHT; // Default to MAIN_LIGHT if unrecognized
 }
 
+String commandTypeToString(CommandType cmdType)
+{
+    switch (cmdType) {
+        CMD_NONE: return "CMD_NONE";
+        CMD_LIGHT_ON_OFF: return "CMD_LIGHT_ON_OFF";
+        CMD_LIGHT_INTENSITY: return "CMD_LIGHT_INTENSITY";
+        CMD_LIGHT_WARMNESS: return "CMD_LIGHT_WARMNESS";
+        CMD_RGB: return "CMD_RGB";
+        CMD_FAN_SPEED: return "CMD_FAN_SPEED";
+        default: return "Unsupported command: " + cmdType;
+    }
+}
+
 const String getDeviceNamespace(String mac_address)
 {
     log_i("mac_address: %s", mac_address.c_str());
