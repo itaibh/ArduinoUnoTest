@@ -235,7 +235,7 @@ void WebServerModule::handleControl() {
     // Update the device's state based on query parameters
     if (_server.hasArg("fan")) {
         currentConfig.fan_speed = _server.arg("fan").toInt();
-        fanCtrl->setSpeed(currentConfig.fan_speed);
+        // fanCtrl->setSpeed(currentConfig.fan_speed);
     }
     if (_server.hasArg("bright")) {
         currentConfig.main_brightness = _server.arg("bright").toInt();
@@ -262,7 +262,7 @@ void WebServerModule::handleControl() {
             currentConfig.light_mode = LightMode::RGB_RING;
         }
         else {
-            Serial.printf("light mode not supported: %s\n", lightModeArg);
+            log_w("light mode not supported: %s", lightModeArg);
         }
     }
 
@@ -271,10 +271,10 @@ void WebServerModule::handleControl() {
         // If the command was sent successfully, save the new state to storage
         storageHandler->saveSpecificDeviceConfig(currentConfig);
         _server.send(200, "text/plain", "OK");
-        Serial.printf("Control commands sent and state saved for %s.\n", address.c_str());
+        log_i("Control commands sent and state saved for %s.", address.c_str());
     } else {
         _server.send(503, "text/plain", "Error: Could not send command via Bluetooth. Is the device connected?");
-        Serial.printf("Error: Failed to send BT command to %s.\n", address.c_str());
+        log_e("Failed to send BT command to %s.", address.c_str());
     }
 }
 

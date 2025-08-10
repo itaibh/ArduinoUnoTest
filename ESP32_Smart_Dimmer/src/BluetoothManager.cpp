@@ -52,6 +52,7 @@ bool BluetoothManager::isConnected()
 
 void BluetoothManager::disconnect()
 {
+    log_i("Disconnecting");
     if (!SerialBT.disconnect())
     {
         log_w("Failed to disconnect.");
@@ -98,6 +99,8 @@ bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
     BTAddress address(config.mac_address);
     if (!deviceConnected || !connectedMacAddress.equals(address))
     {
+        awaitingDeviceConfig = config;
+        waitingToSendCommand = true;
         // Automatically try to connect if not connected to the right device
         if (!connectToDevice(config.mac_address))
         {
@@ -105,7 +108,7 @@ bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
             return false;
         }
     }
-
+    waitingToSendCommand = false;
     // Now call your existing sendCommand with the new parameters
     uint8_t payload[4]; // Max payload size for your commands
 
@@ -229,20 +232,18 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
     case ESP_SPP_OPEN_EVT:
         log_i("Target device connected successfully. mac: %s", mac.toString(true).c_str());
         deviceConnected = true;
-        // if (connectionListener != nullptr)
-        // {
-        //     char bda_str[18];
-        //     uint8_t *bda = param->srv_open.rem_bda; // Connected device's MAC address
-        //     sprintf(bda_str, "%02X:%02X:%02X:%02X:%02X:%02X", bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
-        //     delay(200);
-        //     connectionListener->onBluetoothConnected(String(bda_str));
-        // }
+        if (deviceConnectedListener != nullptr)
+        {
+            deviceConnectedListener->onDeviceConnected(mac.toString());
+            deviceConnected = true;
+            connectedMacAddress = mac;
+        }
         break;
     case ESP_SPP_CLOSE_EVT:
         log_i("Target device disconnected. mac: %s", mac.toString(true).c_str());
         // You might want an onBluetoothDisconnected callback here too
         deviceConnected = false;
-
+        connectedMacAddress = BTAddress();
         if (btDisconnectedListener)
         {
             btDisconnectedListener->onBtDisconnected();
@@ -353,6 +354,15 @@ void BluetoothManager::clearInputBuffer()
     while (SerialBT.available())
     {
         SerialBT.read();
+    }
+}
+
+void BluetoothManager::onDeviceConnected(const BTAddress &mac)
+{
+    if (waitingToSendCommand)
+    {
+        log_i("calling sendConfigToDevice");
+        sendConfigToDevice(awaitingDeviceConfig);
     }
 }
 
