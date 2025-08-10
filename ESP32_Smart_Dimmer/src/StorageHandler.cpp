@@ -13,7 +13,7 @@ StorageHandler::StorageHandler(BluetoothManager *bt, LightController *lc, FanCon
     : btManager(bt), lightCtrl(lc), fanCtrl(fc), lastSaveTime(0), lastChangeDetectedTime(0)
 {
     // Global preferences.begin() is typically done in main setup()
-    bt->registerConnectionListener(this);
+    bt->registerDeviceConnectedListener(this);
     lc->registerListener(this);
     fc->registerListener(this);
 }
@@ -273,7 +273,7 @@ bool StorageHandler::deleteDeviceConfig(const String &mac_address)
 }
 
 // --- Listener: On Bluetooth Connected ---
-void StorageHandler::onBluetoothConnected(String mac_address)
+void StorageHandler::onDeviceConnected(String mac_address)
 {
     currentConnectedMac = mac_address; // Store the currently connected MAC
     log_i("Bluetooth connected to MAC: %s.", mac_address.c_str());

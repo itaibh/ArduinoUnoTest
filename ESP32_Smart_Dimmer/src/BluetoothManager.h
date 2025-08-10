@@ -20,30 +20,36 @@ const uint8_t RX_PACKET_FUNCTION_LIGHT = 0x1C; // Byte 6 for light status (assum
 const int RX_PACKET_FUNCTION_BYTE_IDX = 6;
 const int RX_PACKET_FAN_STATE_BYTE_IDX = 22; // For fan ON/OFF/Speed
 
-class IBluetoothConnectionListener
-{
-public:
-    // Pure virtual function to be called on a new Bluetooth connection
-    // Pass the MAC address of the connected device
-    virtual void onBluetoothConnected(String mac_address) = 0;
-
-    // Good practice: virtual destructor for interfaces
-    virtual ~IBluetoothConnectionListener() = default;
-};
-
 struct BtDevice
 {
     String name;
     String address;
 };
 
-typedef void (*DevicesListReady)(std::map<String, BtDevice> foundDevices, void* context);
+class IBtDeviceConnectedListener
+{
+public:
+    virtual void onDeviceConnected(String mac_address) = 0;
+    virtual ~IBtDeviceConnectedListener() = default;
+};
+
+class IBtDisconnectedListener
+{
+public:
+    virtual void onBtDisconnected() = 0;
+    virtual ~IBtDisconnectedListener() = default;
+};
+
+class IBtDevicesListReadyListener
+{
+public:
+    virtual void onDevicesListReady(std::map<String, BtDevice> devices) = 0;
+    virtual ~IBtDevicesListReadyListener() = default;
+};
 
 class BluetoothManager
 {
 public:
-    typedef void (BluetoothManager::*DeviceDisconnectedEvent)();
-
     BluetoothManager(const char *deviceName);
     void begin();
     void clearInputBuffer();
@@ -51,25 +57,26 @@ public:
     void disconnect();
     void sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize);
     bool sendConfigToDevice(const DeviceConfig &config);
-    void registerConnectionListener(IBluetoothConnectionListener *listener);
+    void registerDeviceConnectedListener(IBtDeviceConnectedListener *listener);
+    void registerBtDisconnectedListener(IBtDisconnectedListener *listener);
+    void registerDevicesListReadyListener(IBtDevicesListReadyListener *listener);
     bool waitForAck(const std::vector<CommandType> &expectedAckTypes, unsigned long timeout_ms);
-    void scanForDevices(DevicesListReady callback, void* context);
+    void scanForDevices();
 
 private:
     BluetoothSerial SerialBT;
     const char *espDeviceName;
     bool deviceConnected = false;
     BTAddress connectedMacAddress;
-    IBluetoothConnectionListener *connectionListener = nullptr;
+    IBtDeviceConnectedListener *deviceConnectedListener = nullptr;
+    IBtDevicesListReadyListener *devicesListReadyListener = nullptr;
+    IBtDisconnectedListener *btDisconnectedListener = nullptr;
     long lastSendTime;
+    bool waitingToScanForDevices = false;
 
     bool connectToDevice(const BTAddress &remoteAddress);
     void handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
-    void scanForDevices_();
-
-    DeviceDisconnectedEvent onDeviceDisconnected = nullptr;
-    DevicesListReady onDevicesListReady = nullptr;
-    void* onDevicesListReadyContext = nullptr;
+    void onDeviceDisconnected();
 
     static void btCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 

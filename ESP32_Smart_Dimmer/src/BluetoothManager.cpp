@@ -21,10 +21,22 @@ BluetoothManager::BluetoothManager(const char *deviceName)
     instance = this; // Set the static instance pointer
 }
 
-void BluetoothManager::registerConnectionListener(IBluetoothConnectionListener *listener)
+void BluetoothManager::registerDeviceConnectedListener(IBtDeviceConnectedListener *listener)
 {
-    connectionListener = listener; // Assign the listener to the private member
-    Serial.println("BluetoothManager: Connection listener registered.");
+    deviceConnectedListener = listener; // Assign the listener to the private member
+    log_i("Device connected listener registered.");
+}
+
+void BluetoothManager::registerBtDisconnectedListener(IBtDisconnectedListener *listener)
+{
+    btDisconnectedListener = listener;
+    log_i("Bluetooth disconected listener registered.");
+}
+
+void BluetoothManager::registerDevicesListReadyListener(IBtDevicesListReadyListener *listener)
+{
+    devicesListReadyListener = listener;
+    log_i("Devices list ready listener registered.");
 }
 
 void BluetoothManager::begin()
@@ -64,9 +76,9 @@ bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
     {
         deviceConnected = true;
         connectedMacAddress = remoteAddress;
-        if (connectionListener)
+        if (deviceConnectedListener)
         {
-            connectionListener->onBluetoothConnected(connectedMacAddress.toString(true));
+            deviceConnectedListener->onDeviceConnected(connectedMacAddress.toString(true));
         }
         log_i("Successfully connected to: %s", remoteAddress.toString(true).c_str());
         return true;
@@ -231,10 +243,11 @@ void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_
         // You might want an onBluetoothDisconnected callback here too
         deviceConnected = false;
 
-        if (onDeviceDisconnected)
+        if (btDisconnectedListener)
         {
-            (this->*onDeviceDisconnected)();
+            btDisconnectedListener->onBtDisconnected();
         }
+        onDeviceDisconnected();
         break;
     case ESP_SPP_DATA_IND_EVT:
         /*
@@ -343,20 +356,20 @@ void BluetoothManager::clearInputBuffer()
     }
 }
 
-void BluetoothManager::scanForDevices_()
+void BluetoothManager::onDeviceDisconnected()
 {
-    log_i("callback - calling scanForDevices, passing context address: %p", onDevicesListReadyContext);
-    scanForDevices(onDevicesListReady, onDevicesListReadyContext);
+    if (waitingToScanForDevices)
+    {
+        log_i("calling scanForDevices");
+        scanForDevices();
+    }
 }
 
-void BluetoothManager::scanForDevices(DevicesListReady callback, void *context)
+void BluetoothManager::scanForDevices()
 {
-    log_i("context: %p", context);
     if (deviceConnected)
     {
-        onDevicesListReady = callback;
-        onDevicesListReadyContext = context;
-        onDeviceDisconnected = &BluetoothManager::scanForDevices_;
+        waitingToScanForDevices = true;
         disconnect();
         return;
     }
@@ -383,11 +396,11 @@ void BluetoothManager::scanForDevices(DevicesListReady callback, void *context)
             }
         }
 
-        if (callback != nullptr)
+        if (devicesListReadyListener)
         {
             log_i("calling callback with %d devices", foundDevices->size());
             // Call the method using the pointer.
-            (*callback)(*foundDevices, context);
+            devicesListReadyListener->onDevicesListReady(*foundDevices);
             delete foundDevices;
         }
     }
@@ -395,4 +408,5 @@ void BluetoothManager::scanForDevices(DevicesListReady callback, void *context)
     {
         log_i("No classic Bluetooth devices found.");
     }
+    waitingToScanForDevices = false;
 }

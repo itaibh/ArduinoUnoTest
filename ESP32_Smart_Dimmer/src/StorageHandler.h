@@ -16,7 +16,7 @@ String lightModeToString(LightMode mode);
 // Helper to convert String to LightMode enum (for web UI input/Preferences)
 LightMode stringToLightMode(const String &modeStr);
 
-class StorageHandler : public IBluetoothConnectionListener, public IFanControllerListener, public ILightControllerListener
+class StorageHandler : public IBtDeviceConnectedListener, public IFanControllerListener, public ILightControllerListener
 {
 public:
     StorageHandler(BluetoothManager *bt, LightController *lc, FanController *fc);
@@ -38,7 +38,7 @@ public:
     bool isDeviceConfigured(const String &mac_address);
 
     // Listener callbacks
-    void onBluetoothConnected(String mac_address);
+    void onDeviceConnected(String mac_address);
     void onLightControllerChange(LightMode light_mode, int main_brightness, int main_warmness, int ring_brightness, int ring_hue);
     void onFanControllerChange(int fan_speed);
 

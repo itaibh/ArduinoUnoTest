@@ -8,7 +8,7 @@
  */
 WebServerModule::WebServerModule(StorageHandler* sh, BluetoothManager* bt, LightController* lc, FanController* fc)
     : storageHandler(sh), btManager(bt), lightCtrl(lc), fanCtrl(fc) {
-    // Constructor logic if needed
+    btManager->registerDevicesListReadyListener(this);
 }
 
 /**
@@ -77,23 +77,10 @@ void WebServerModule::handleRoot() {
  */
 void WebServerModule::handleFindDevices() {
     log_i("Handling /discover_devices request - performing Bluetooth scan.");
-    log_i("context address: %p", this);
-    btManager->scanForDevices(&WebServerModule::_onDeviceListReady, this);
+    btManager->scanForDevices();
 }
 
-void WebServerModule::_onDeviceListReady(std::map<String, BtDevice> scannedDevices, void* context) {
-    log_i("context: %p", context);
-    // Cast the void* context pointer back to a WebServerModule instance pointer.
-    WebServerModule* instance = static_cast<WebServerModule*>(context);
-    
-    // Now you can safely call the non-static member function on that instance.
-    if (instance) {
-        log_i("calling onDeviceListReady with %d devices", scannedDevices.size());
-        instance->onDeviceListReady(scannedDevices);
-    }
-}
-
-void WebServerModule::onDeviceListReady(std::map<String, BtDevice> scannedDevices) {
+void WebServerModule::onDevicesListReady(std::map<String, BtDevice> devices) {
     if (storageHandler == nullptr) {
         log_e("storage handler is null");
         return;
@@ -102,7 +89,7 @@ void WebServerModule::onDeviceListReady(std::map<String, BtDevice> scannedDevice
 
     String jsonResponse = "[";
     bool firstDevice = true;
-    for (auto const& pair : scannedDevices) {
+    for (auto const& pair : devices) {
         const String& mac = pair.first;
         const BtDevice& btDevice = pair.second;
 
@@ -125,7 +112,7 @@ void WebServerModule::onDeviceListReady(std::map<String, BtDevice> scannedDevice
     jsonResponse += "]";
 
     _server.send(200, "application/json", jsonResponse);
-    log_i("Sent /discover_devices response. Count: %d", scannedDevices.size());
+    log_i("Sent /discover_devices response. Count: %d", devices.size());
 }
 
 /**

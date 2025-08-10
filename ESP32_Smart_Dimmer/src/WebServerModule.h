@@ -9,7 +9,7 @@
 #include "FanController.h"
 #include "StorageHandler.h"
 
-class WebServerModule {
+class WebServerModule : public IBtDevicesListReadyListener {
 public:
     /** Constructor */
     WebServerModule(StorageHandler* sh, BluetoothManager* bt, LightController* lc, FanController* fc);
@@ -25,6 +25,8 @@ public:
      * This should be called frequently in the main loop.
      */
     void handleClient();
+
+    virtual void onDevicesListReady(std::map<String, BtDevice> devices);
 
 private:
     WebServer _server; // Private instance of the WebServer
@@ -42,9 +44,6 @@ private:
     void handleNotFound();
     void handleAddDevice();
     void handleRemoveDevice();
-
-    static void _onDeviceListReady(std::map<String, BtDevice> scannedDevices, void* context);
-    void onDeviceListReady(std::map<String, BtDevice> scannedDevices);
 
     String getContentType(String filename);
 };
