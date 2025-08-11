@@ -77,7 +77,7 @@ private:
 
     DeviceConfig awaitingDeviceConfig;
 
-    bool connectToDevice(const BTAddress &remoteAddress);
+    void connectToDevice(const BTAddress &remoteAddress);
     void handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
     void onDeviceConnected(const BTAddress &mac);
     void onDeviceDisconnected();

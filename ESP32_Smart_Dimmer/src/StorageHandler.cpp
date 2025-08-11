@@ -276,21 +276,21 @@ bool StorageHandler::deleteDeviceConfig(const String &mac_address)
 void StorageHandler::onDeviceConnected(String mac_address)
 {
     currentConnectedMac = mac_address; // Store the currently connected MAC
-    log_i("Bluetooth connected to MAC: %s.", mac_address.c_str());
+    log_i("Bluetooth connected to MAC: %s.", currentConnectedMac.c_str());
     std::vector<String>* macAddresses = _loadMacsFromMasterList();
-    if (std::find(macAddresses->begin(), macAddresses->end(), mac_address) == macAddresses->end()){
+    if (std::find(macAddresses->begin(), macAddresses->end(), currentConnectedMac) == macAddresses->end()){
         log_w("mac address not in valid addresses list:");
         for (size_t i = 0; i < macAddresses->size(); ++i) {
             log_i("  %s", (*macAddresses)[i].c_str());
         }
         return;
     }
-
+    log_i("mac address found in valid addresses list");
     // Get (or create default) the DeviceConfig for this MAC address
-    DeviceConfig configForConnectedDevice = _restoreSingleDevice(mac_address);
+    DeviceConfig configForConnectedDevice = _restoreSingleDevice(currentConnectedMac);
 
     // Update the in-memory map
-    allManagedDevices[mac_address] = configForConnectedDevice;
+    allManagedDevices[currentConnectedMac] = configForConnectedDevice;
 
     // Set the lastSavedDeviceConfig for the currently connected device for debounce logic
     lastSavedDeviceConfig = configForConnectedDevice;
@@ -345,7 +345,7 @@ void StorageHandler::onFanControllerChange(int fan_speed)
         log_w("StorageHandler: Fan change detected, but no device connected or managed for updates.");
         return;
     }
-    log_i("StorageHandler: Fan change detected for %s. Updating in-memory config.\n", currentConnectedMac.c_str());
+    log_i("StorageHandler: Fan change detected for %s. Updating in-memory config.", currentConnectedMac.c_str());
 
     DeviceConfig &currentConfig = allManagedDevices[currentConnectedMac]; // Get reference to modify
     currentConfig.fan_speed = fan_speed;

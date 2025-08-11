@@ -19,6 +19,7 @@ BluetoothManager::BluetoothManager(const char *deviceName)
     : espDeviceName(deviceName)
 {
     instance = this; // Set the static instance pointer
+    lastSendTime = millis() - MIN_SEND_INTERVAL;
 }
 
 void BluetoothManager::registerDeviceConnectedListener(IBtDeviceConnectedListener *listener)
@@ -60,35 +61,24 @@ void BluetoothManager::disconnect()
 }
 
 // Connects to a specific device
-bool BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
+void BluetoothManager::connectToDevice(const BTAddress &remoteAddress)
 {
-    log_i("remoteAddress: %s", remoteAddress.toString(true).c_str());
+    log_i("remoteAddress: %s (current connected device: %s (%s))", 
+        remoteAddress.toString(true).c_str(),
+        connectedMacAddress.toString(true).c_str(),
+        deviceConnected ? "connected" : "not connecetd");
+
     if (deviceConnected)
     {
         if (connectedMacAddress.equals(remoteAddress))
         {
             log_i("Already connected to this device.");
-            return true;
+            return;
         }
         disconnect();
     }
 
-    if (SerialBT.connect(remoteAddress))
-    {
-        deviceConnected = true;
-        connectedMacAddress = remoteAddress;
-        if (deviceConnectedListener)
-        {
-            deviceConnectedListener->onDeviceConnected(connectedMacAddress.toString(true));
-        }
-        log_i("Successfully connected to: %s", remoteAddress.toString(true).c_str());
-        return true;
-    }
-    else
-    {
-        log_w("Failed to connect to: %s", remoteAddress.toString(true).c_str());
-        return false;
-    }
+    SerialBT.connect(remoteAddress);
 }
 
 bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
@@ -99,14 +89,15 @@ bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
     BTAddress address(config.mac_address);
     if (!deviceConnected || !connectedMacAddress.equals(address))
     {
+        log_i("need to switch device");
         awaitingDeviceConfig = config;
         waitingToSendCommand = true;
         // Automatically try to connect if not connected to the right device
-        if (!connectToDevice(config.mac_address))
-        {
-            log_w("Failed to connect for sending command.");
-            return false;
-        }
+        connectToDevice(config.mac_address);
+        return false;
+    }
+    else {
+        log_i("correct device connected");
     }
     waitingToSendCommand = false;
     // Now call your existing sendCommand with the new parameters
@@ -143,15 +134,18 @@ bool BluetoothManager::sendConfigToDevice(const DeviceConfig &config)
 
 void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size_t payloadSize)
 {
+    log_i("enter");
     if (!deviceConnected)
     {
         log_w("Cannot send command: Not connected.");
         return;
     }
 
-    int diff = millis() - lastSendTime;
+    int time = millis();
+    int diff = time - lastSendTime;
     if (diff < MIN_SEND_INTERVAL)
     {
+        log_i("waiting %d ms (%d - (%d - %d))", MIN_SEND_INTERVAL - diff, MIN_SEND_INTERVAL, time, lastSendTime);
         delay(MIN_SEND_INTERVAL - diff);
     }
     const uint8_t *cmdPrefix;
@@ -220,92 +214,133 @@ void BluetoothManager::sendCommand(CommandType cmd, const uint8_t *payload, size
     lastSendTime = millis();
 }
 
+void printStatus(esp_spp_status_t status)
+{
+    switch (status)
+    {
+    case ESP_SPP_SUCCESS:
+        log_i("ESP_SPP_SUCCESS");
+        break;
+    case ESP_SPP_FAILURE:
+        log_i("ESP_SPP_FAILURE");
+        break;
+    case ESP_SPP_BUSY:
+        log_i("ESP_SPP_BUSY");
+        break;
+    case ESP_SPP_NO_DATA:
+        log_i("ESP_SPP_NO_DATA");
+        break;
+    case ESP_SPP_NO_RESOURCE:
+        log_i("ESP_SPP_NO_RESOURCE");
+        break;
+    case ESP_SPP_NEED_INIT:
+        log_i("ESP_SPP_NEED_INIT");
+        break;
+    case ESP_SPP_NEED_DEINIT:
+        log_i("ESP_SPP_NEED_DEINIT");
+        break;
+    case ESP_SPP_NO_CONNECTION:
+        log_i("ESP_SPP_NO_CONNECTION");
+        break;
+    case ESP_SPP_NO_SERVER:
+        log_i("ESP_SPP_NO_SERVER");
+        break;
+    default:
+        log_i("Unknown status");
+        break;
+    }
+}
+
 // Member method to handle Bluetooth events
 void BluetoothManager::handleBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
     uint8_t receivedBytes[MAX_PACKET_SIZE];
     int bytesRead = 0;
-    BTAddress mac(param->srv_open.rem_bda);
 
+    log_i("%d", event);
     switch (event)
     {
+
+    case ESP_SPP_INIT_EVT:
+        log_i("ESP_SPP_INIT_EVT");
+        printStatus(param->init.status);
+        break;
+    case ESP_SPP_UNINIT_EVT:
+        log_i("ESP_SPP_UNINIT_EVT");
+        printStatus(param->uninit.status);
+        break;
+    case ESP_SPP_DISCOVERY_COMP_EVT:
+        log_i("ESP_SPP_DISCOVERY_COMP_EVT");
+        printStatus(param->disc_comp.status);
+        break;
     case ESP_SPP_OPEN_EVT:
-        log_i("Target device connected successfully. mac: %s", mac.toString(true).c_str());
-        deviceConnected = true;
-        if (deviceConnectedListener != nullptr)
+        log_i("ESP_SPP_OPEN_EVT");
         {
-            deviceConnectedListener->onDeviceConnected(mac.toString());
+            printStatus(param->open.status);
+            BTAddress mac(param->open.rem_bda);
+            log_i("Target device connected successfully. mac: %s", mac.toString(true).c_str());
             deviceConnected = true;
             connectedMacAddress = mac;
+            if (deviceConnectedListener != nullptr)
+            {
+                deviceConnectedListener->onDeviceConnected(mac.toString(true));
+            }
         }
         break;
     case ESP_SPP_CLOSE_EVT:
-        log_i("Target device disconnected. mac: %s", mac.toString(true).c_str());
-        // You might want an onBluetoothDisconnected callback here too
-        deviceConnected = false;
-        connectedMacAddress = BTAddress();
-        if (btDisconnectedListener)
+        log_i("ESP_SPP_CLOSE_EVT");
         {
-            btDisconnectedListener->onBtDisconnected();
+            printStatus(param->close.status);
+            log_i("Target device disconnected.");
+            // You might want an onBluetoothDisconnected callback here too
+            deviceConnected = false;
+            connectedMacAddress = BTAddress();
+            if (btDisconnectedListener)
+            {
+                btDisconnectedListener->onBtDisconnected();
+            }
+            onDeviceDisconnected();
         }
-        onDeviceDisconnected();
+        break;
+
+    case ESP_SPP_START_EVT:
+        log_i("ESP_SPP_START_EVT");
+        printStatus(param->start.status);
+        break;
+    case ESP_SPP_CL_INIT_EVT:
+        log_i("ESP_SPP_CL_INIT_EVT");
+        printStatus(param->cl_init.status);
         break;
     case ESP_SPP_DATA_IND_EVT:
-        /*
-          Serial.printf("[millis: %ld] BT Data Received (Len: %d, Handle: %d, MTU: %d): ",
-                        millis(), param->data_ind.len, param->data_ind.handle, ESP_SPP_MAX_MTU);
-
-          while (SerialBT.available() && bytesRead < MAX_PACKET_SIZE) {
-            receivedBytes[bytesRead++] = SerialBT.read();
-          } // Read and print all available bytes from the BluetoothSerial buffer
-
-          // Print received data for debugging
-          for (int i = 0; i < bytesRead; i++) {
-            Serial.printf("%02X ", receivedBytes[i]);
-          }
-          Serial.println();
-
-          // --- ACK Parsing Logic ---
-          if (bytesRead == 24 &&
-              receivedBytes[0] == 0x01 && receivedBytes[1] == 0xFE &&
-              receivedBytes[4] == RX_PACKET_HEADER_BYTE4 && receivedBytes[5] == RX_PACKET_HEADER_BYTE5) { // Check for common status header
-
-            uint8_t receivedFunction = receivedBytes[RX_PACKET_FUNCTION_BYTE_IDX]; // Byte 6: 0x18 for fan, 0x1C for light
-
-            // --- Acknowledge Fan Commands ---
-            if (receivedFunction == RX_PACKET_FUNCTION_FAN) {
-                // For fan, we know byte 22 is the state (0x00 for off, 0x01 for low)
-                uint8_t fanState = receivedBytes[RX_PACKET_FAN_STATE_BYTE_IDX];
-                Serial.printf("[BT Manager] Received Fan Status: State=%02X\n", fanState);
-
-                // If we are currently awaiting a FAN_SPEED ACK
-                if (_ackType == CMD_FAN_SPEED) {
-                    // If the received state matches the state we just sent, consider it acknowledged.
-                    // You might need more sophisticated logic here if the fan has more states or needs to report errors.
-                    // For now, any fan status message after a fan command might be an ACK.
-                    _ackReceived = true;
-                    Serial.println("[BT Manager] Fan command acknowledged!");
-                }
-            }
-
-            // --- Acknowledge Light Commands ---
-            // You need to capture light status messages from the remote
-            // similar to how you captured fan status messages.
-            else if (receivedFunction == RX_PACKET_FUNCTION_LIGHT) { // Assuming 0x1C for light status
-                Serial.println("[BT Manager] Received Light Status.");
-                // Parse light status bytes here (e.g., brightness, color)
-
-                if (_ackType == CMD_RGB) { // Assuming CMD_RGB covers all light settings
-                    _ackReceived = true;
-                    Serial.println("[BT Manager] Light command acknowledged!");
-                }
-            }
-
-            // Else, it's an unhandled status message or from a different function
-          }
-    */
+        log_i("ESP_SPP_DATA_IND_EVT");
+        printStatus(param->data_ind.status);
+        break;
+    case ESP_SPP_CONG_EVT:
+        log_i("ESP_SPP_CONG_EVT");
+        printStatus(param->cong.status);
+        break;
+    case ESP_SPP_WRITE_EVT:
+        log_i("ESP_SPP_WRITE_EVT");
+        printStatus(param->write.status);
+        break;
+    case ESP_SPP_SRV_OPEN_EVT:
+        log_i("ESP_SPP_SRV_OPEN_EVT");
+        printStatus(param->srv_open.status);
+        break;
+    case ESP_SPP_SRV_STOP_EVT:
+        log_i("ESP_SPP_SRV_STOP_EVT");
+        printStatus(param->srv_stop.status);
+        break;
+    case ESP_SPP_VFS_REGISTER_EVT:
+        log_i("ESP_SPP_VFS_REGISTER_EVT");
+        printStatus(param->vfs_register.status);
+        break;
+    case ESP_SPP_VFS_UNREGISTER_EVT:
+        log_i("ESP_SPP_VFS_UNREGISTER_EVT");
+        printStatus(param->vfs_unregister.status);
         break;
     default:
+        log_i("Unknown SPP event: %d", event);
         break;
     }
 }
@@ -371,21 +406,28 @@ void BluetoothManager::onDeviceDisconnected()
     if (waitingToScanForDevices)
     {
         log_i("calling scanForDevices");
+        delay(500);
         scanForDevices();
     }
 }
 
 void BluetoothManager::scanForDevices()
 {
+    log_i("deviceConnected: %s, connectedDevice: %s",
+        deviceConnected ? "true" : "false",
+        connectedMacAddress.toString(true).c_str());
+
     if (deviceConnected)
     {
         waitingToScanForDevices = true;
         disconnect();
         return;
     }
+    
+    waitingToScanForDevices = false;
 
-    Serial.println("------------------------------------");
-    Serial.println("Scanning for devices (10 seconds)...");
+    log_i("------------------------------------");
+    log_i("Scanning for devices (10 seconds)...");
 
     BTScanResults *scanResults = SerialBT.discover(10000);
 
@@ -418,5 +460,4 @@ void BluetoothManager::scanForDevices()
     {
         log_i("No classic Bluetooth devices found.");
     }
-    waitingToScanForDevices = false;
 }
